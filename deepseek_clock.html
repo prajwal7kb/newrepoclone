@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<meta name="description" content="Chronos — a fluid, clutter-free, responsive clock with timers, alarms and themes." />
+<title>Chronos — Fluid Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+:root{
+  --bg:#000; --bg2:#000; --fg:#fff; --muted:#8a8a8a; --accent:#5eead4;
+  --font: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --glow:none;
+  color-scheme: dark;
+  --hud-bg: rgba(20,22,28,.55);
+  --line: rgba(255,255,255,.12);
+}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--font);
+  overflow:hidden; -webkit-font-smoothing:antialiased;
+  transition: background-color .5s ease, color .5s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ============================================================
+   BACKGROUND LAYERS
+   ============================================================ */
+#bgLayer{
+  position:fixed; inset:0; z-index:0; background:var(--bg);
+  background-size:cover; background-position:center;
+  transition: background-color .5s ease;
+}
+#bgLayer.gradient{
+  background:
+    radial-gradient(120% 85% at 50% -10%, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 58%),
+    radial-gradient(100% 80% at 50% 115%, color-mix(in srgb, var(--accent) 13%, transparent) 0%, transparent 62%),
+    linear-gradient(170deg, var(--bg) 0%, var(--bg2) 100%);
+}
+#bgLayer.photo{ background-color:var(--bg); }
+#bgLayer.photo::after{
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(0,0,0,.42), rgba(0,0,0,.68));
+}
+#fx{
+  position:fixed; inset:0; z-index:1; pointer-events:none;
+  opacity:0; transition:opacity .7s ease;
+}
+body.bg-particles #fx{ opacity:1; }
+
+/* ============================================================
+   STAGE / CLOCK
+   ============================================================ */
+#stage{
+  position:relative; z-index:2;
+  height:100dvh; width:100%;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:1.2rem;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem calc(6.5rem + env(safe-area-inset-bottom));
+  overflow-y:auto; overflow-x:hidden;
+  transition: filter .8s ease;
+  scrollbar-width:none;
+}
+#stage::-webkit-scrollbar{display:none}
+
+#clockWrap{
+  display:flex; flex-direction:column; align-items:center; gap:.55rem;
+  transition: transform 2.5s ease;
+  will-change: transform;
+  max-width:100%;
+}
+
+#timeLine{
+  display:flex; align-items:baseline; justify-content:center;
+  font-size: clamp(2rem, min(16vw, 26vh), 17rem);
+  font-weight:700; line-height:.92; letter-spacing:.01em;
+  font-variant-numeric: tabular-nums;
+  white-space:nowrap; max-width:100%;
+  color:var(--fg);
+  text-shadow: var(--glow);
+  transition: font-size .35s cubic-bezier(.2,.8,.2,1);
+}
+body.has-ms #timeLine{ font-size: clamp(1.15rem, min(10vw, 17vh), 11rem); }
+body.tool-open #timeLine{ font-size: clamp(1.5rem, min(9vw, 14vh), 7rem); }
+body.tool-open.has-ms #timeLine{ font-size: clamp(1rem, min(6.2vw, 9.5vh), 4.6rem); }
+
+.colon{ display:inline-block; transition: opacity .16s linear; }
+.colon.off{ opacity:0; }
+#segMs{ font-size:.52em; letter-spacing:0; color:var(--accent); opacity:.92; margin-left:.02em;}
+#ampm{
+  font-size:.24em; margin-left:.4em; font-weight:600; letter-spacing:.12em;
+  color:var(--accent); align-self:center;
+}
+
+.sub{ color:var(--muted); font-size: clamp(.8rem, 2.2vw, 1.15rem); letter-spacing:.22em; text-transform:uppercase; }
+#dayLine{ color:var(--accent); opacity:.92; }
+#tzLine{ font-size: clamp(.62rem, 1.5vw, .8rem); letter-spacing:.28em; opacity:.65; }
+
+/* ============================================================
+   TOOL PANELS
+   ============================================================ */
+#panels{
+  width:min(600px, 94vw); display:none;
+  max-height:44vh; overflow-y:auto;
+  scrollbar-width:thin;
+}
+body.tool-open #panels{ display:block; }
+.panel{ display:none; flex-direction:column; align-items:center; gap:.85rem; }
+.panel.active{ display:flex; }
+
+.digits{
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.7rem, 6.5vw, 3rem);
+  font-weight:700; letter-spacing:.02em;
+  color:var(--fg); text-shadow:var(--glow);
+  line-height:1.1;
+}
+.digits.small{ font-size: clamp(1.2rem, 4vw, 1.9rem); }
+
+.btnrow{ display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; align-items:center; }
+
+.btn{
+  appearance:none; border:1px solid var(--line);
+  background: color-mix(in srgb, var(--fg) 7%, transparent);
+  color:var(--fg); font-family:inherit; font-size:.86rem; font-weight:600;
+  letter-spacing:.06em; padding:.62em 1.15em; border-radius:999px;
+  cursor:pointer; transition: background .2s, border-color .2s, transform .12s, color .2s;
+  min-height:42px;
+}
+.btn:hover{ background: color-mix(in srgb, var(--fg) 14%, transparent); }
+.btn:active{ transform:scale(.96); }
+.btn.primary{
+  background: var(--accent);
+  color:#05070a; border-color:transparent;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.btn.primary:hover{ filter:brightness(1.1); }
+.chip{
+  appearance:none; border:1px solid var(--line); background:transparent; color:var(--muted);
+  font-family:inherit; font-size:.75rem; letter-spacing:.08em; padding:.42em .8em;
+  border-radius:999px; cursor:pointer; transition:.2s;
+}
+.chip:hover{ color:var(--fg); border-color:var(--accent); }
+
+input[type=number], input[type=time], input[type=text]{
+  font-family:inherit; font-size:.9rem; color:var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border:1px solid var(--line); border-radius:10px;
+  padding:.5em .6em; width:5.4em; text-align:center;
+  color-scheme: inherit;
+}
+input[type=time]{ width:7.5em; }
+input:focus-visible, .btn:focus-visible, select:focus-visible, .chip:focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+
+.laps, .alarms{ list-style:none; margin:0; padding:0; width:100%; max-height:22vh; overflow-y:auto; }
+.laps li, .alarms li{
+  display:flex; justify-content:space-between; align-items:center; gap:.8rem;
+  padding:.5em .2em; font-size:.82rem; color:var(--muted);
+  border-bottom:1px solid var(--line); font-variant-numeric: tabular-nums;
+}
+.alarms li .atime{ font-size:1.05rem; color:var(--fg); font-weight:700; letter-spacing:.06em; }
+.alarms li .aoff{ opacity:.4; }
+.hint{ color:var(--muted); font-size:.72rem; letter-spacing:.1em; text-align:center; }
+
+/* ============================================================
+   HUD
+   ============================================================ */
+#hud{
+  position:fixed; left:50%; bottom: max(.9rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index:6; display:flex; gap:.35rem; align-items:center;
+  padding:.32rem; border-radius:999px;
+  background: var(--hud-bg);
+  border:1px solid var(--line);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  transition: opacity .45s ease, transform .45s ease;
+  max-width: calc(100vw - 2rem);
+  overflow-x:auto; scrollbar-width:none;
+}
+#hud::-webkit-scrollbar{display:none}
+#hud button{
+  appearance:none; border:0; background:transparent; color:var(--muted);
+  font-family:inherit; font-size:.74rem; font-weight:600; letter-spacing:.09em;
+  text-transform:uppercase; padding:.55em .8em; border-radius:999px;
+  cursor:pointer; transition:.25s; white-space:nowrap;
+}
+#hud button:hover{ color:var(--fg); }
+#hud button.active{ color:var(--bg); background:var(--accent); }
+
+#gear{
+  position:fixed; top: max(1rem, env(safe-area-inset-top)); right:1rem; z-index:7;
+  width:44px; height:44px; border-radius:50%;
+  display:grid; place-items:center; font-size:1.05rem;
+  background: var(--hud-bg); border:1px solid var(--line); color:var(--fg);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  cursor:pointer; transition: opacity .45s ease, transform .45s ease, rotate .4s;
+}
+#gear:hover{ rotate:60deg; }
+
+body.idle{ cursor:none; }
+body.idle #hud{ opacity:0; transform:translateX(-50%) translateY(16px); pointer-events:none; }
+body.idle #gear{ opacity:0; pointer-events:none; }
+body.idle #weather{ opacity:0; }
+
+/* ============================================================
+   SETTINGS DRAWER
+   ============================================================ */
+#scrim{
+  position:fixed; inset:0; z-index:15; background:rgba(0,0,0,.45);
+  opacity:0; pointer-events:none; transition:opacity .3s;
+}
+#scrim.show{ opacity:1; pointer-events:auto; }
+
+#settings{
+  position:fixed; inset:0 0 0 auto; z-index:20;
+  width:min(400px, 100%);
+  transform:translateX(101%);
+  transition: transform .38s cubic-bezier(.2,.85,.25,1);
+  background: color-mix(in srgb, var(--bg2) 94%, transparent);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border-left:1px solid var(--line);
+  overflow-y:auto; overscroll-behavior:contain;
+  padding: 1.1rem 1.15rem calc(3rem + env(safe-area-inset-bottom));
+  box-shadow: -20px 0 60px rgba(0,0,0,.4);
+}
+#settings.open{ transform:translateX(0); }
+#settings header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:1rem; position:sticky; top:-1.1rem;
+  padding:1.1rem 0 .7rem; background:inherit; z-index:2;
+}
+#settings h2{ font-size:.95rem; letter-spacing:.22em; text-transform:uppercase; margin:0; color:var(--accent); }
+#closeSettings{
+  appearance:none; border:1px solid var(--line); background:transparent; color:var(--fg);
+  width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:.9rem;
+}
+#settings section{ margin-bottom:1.4rem; }
+#settings h3{
+  font-size:.65rem; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 .5rem; font-weight:600;
+}
+.row{
+  display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  padding:.55em 0; font-size:.84rem; color:var(--fg); cursor:pointer;
+  border-bottom:1px solid color-mix(in srgb, var(--fg) 7%, transparent);
+}
+.row:last-child{ border-bottom:0; }
+.row > span:first-child{ flex:1; }
+.row select{
+  font-family:inherit; font-size:.8rem; color:var(--fg);
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border:1px solid var(--line); border-radius:9px;
+  padding:.45em .6em; max-width:180px; cursor:pointer; color-scheme:inherit;
+}
+.row select option{ background: var(--bg2); color: var(--fg); }
+
+input[type=checkbox]{
+  appearance:none; width:44px; height:25px; border-radius:999px; flex:none;
+  background: color-mix(in srgb, var(--fg) 18%, transparent);
+  position:relative; cursor:pointer; transition: background .25s;
+}
+input[type=checkbox]::after{
+  content:''; position:absolute; top:3px; left:3px; width:19px; height:19px;
+  border-radius:50%; background:#fff; transition:transform .25s cubic-bezier(.3,1.4,.5,1);
+  box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+input[type=checkbox]:checked{ background: var(--accent); }
+input[type=checkbox]:checked::after{ transform: translateX(19px); }
+
+.swatches{ display:flex; gap:.4rem; flex-wrap:wrap; justify-content:flex-end; }
+.sw{
+  width:24px; height:24px; border-radius:50%; cursor:pointer; border:2px solid transparent;
+  transition:transform .15s, border-color .2s; padding:0;
+}
+.sw:hover{ transform:scale(1.15); }
+.sw.sel{ border-color: var(--fg); transform:scale(1.15); }
+input[type=color]{
+  width:32px; height:26px; padding:0; border:1px solid var(--line);
+  border-radius:7px; background:transparent; cursor:pointer;
+}
+
+/* ============================================================
+   WEATHER / TOAST / ALARM OVERLAY
+   ============================================================ */
+#weather{
+  position:fixed; top: max(1rem, env(safe-area-inset-top)); left:1rem; z-index:6;
+  display:flex; align-items:center; gap:.45rem;
+  padding:.45em .85em; border-radius:999px;
+  background: var(--hud-bg); border:1px solid var(--line);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  font-size:.82rem; font-weight:600; letter-spacing:.05em;
+  transition:opacity .45s;
+}
+#weather[hidden]{ display:none; }
+#wxIcon{ font-size:1rem; }
+
+#toast{
+  position:fixed; left:50%; bottom: 5.5rem; transform:translate(-50%, 14px);
+  z-index:30; padding:.7em 1.2em; border-radius:999px;
+  background: var(--accent); color:#05070a; font-size:.8rem; font-weight:700;
+  letter-spacing:.06em; opacity:0; pointer-events:none;
+  transition: opacity .3s, transform .3s;
+}
+#toast.show{ opacity:1; transform:translate(-50%,0); }
+
+#ringOverlay{
+  position:fixed; inset:0; z-index:40; display:none;
+  flex-direction:column; align-items:center; justify-content:center; gap:1.6rem;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+  text-align:center; padding:2rem;
+}
+#ringOverlay.show{ display:flex; animation: pulseBg 1.6s ease-in-out infinite; }
+@keyframes pulseBg{ 0%,100%{ background-color: color-mix(in srgb, var(--bg) 84%, transparent);} 50%{ background-color: color-mix(in srgb, var(--accent) 22%, var(--bg)); } }
+#ringLabel{ font-size: clamp(2.4rem, 14vw, 6rem); font-weight:700; letter-spacing:.04em; color:var(--accent); font-variant-numeric: tabular-nums; }
+#ringOverlay p{ margin:0; letter-spacing:.3em; text-transform:uppercase; font-size:.72rem; color:var(--muted); }
+
+/* ============================================================
+   NIGHT DIM
+   ============================================================ */
+body.dim #stage, body.dim #bgLayer{ filter: brightness(.42) saturate(.8); }
+
+/* ============================================================
+   RESPONSIVE / MOTION
+   ============================================================ */
+@media (max-width: 480px){
+  #hud button{ font-size:.68rem; padding:.5em .62em; }
+  #settings{ width:100%; }
+}
+@media (orientation: landscape) and (max-height: 480px){
+  #timeLine{ font-size: clamp(1.8rem, min(11vw, 34vh), 9rem); }
+  body.has-ms #timeLine{ font-size: clamp(1.1rem, min(7vw, 22vh), 6rem); }
+  #stage{ padding-bottom: calc(4.6rem + env(safe-area-inset-bottom)); gap:.5rem; }
+  #panels{ max-height:52vh; }
+}
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
+</style>
+</head>
+<body class="bg-particles-off">
+
+<div id="bgLayer"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<div id="weather" hidden>
+  <span id="wxIcon" aria-hidden="true">☀️</span>
+  <span id="wxTemp">--°</span>
+</div>
+
+<main id="stage">
+  <div id="clockWrap">
+    <div id="dayLine" class="sub" aria-hidden="true"></div>
+    <div id="timeLine" role="timer" aria-hidden="true">
+      <span id="segH">00</span><span class="colon" id="colon1">:</span><span id="segM">00</span><span class="colon" id="colon2">:</span><span id="segS">00</span><span id="segMs">.000</span><span id="ampm">AM</span>
+    </div>
+    <div id="dateLine" class="sub" aria-hidden="true"></div>
+    <div id="tzLine" class="sub" aria-hidden="true"></div>
+  </div>
+
+  <div id="panels">
+    <!-- STOPWATCH -->
+    <section class="panel" data-panel="stopwatch" aria-label="Stopwatch">
+      <div class="digits" id="swDisplay">00:00.00</div>
+      <div class="btnrow">
+        <button class="btn primary" id="swStart">Start</button>
+        <button class="btn" id="swLap">Lap</button>
+        <button class="btn" id="swReset">Reset</button>
+      </div>
+      <ol class="laps" id="swLaps" aria-label="Lap times"></ol>
+    </section>
+
+    <!-- TIMER -->
+    <section class="panel" data-panel="timer" aria-label="Countdown timer">
+      <div class="digits" id="tmDisplay">05:00</div>
+      <div class="btnrow">
+        <button class="chip" data-min="1">1m</button>
+        <button class="chip" data-min="3">3m</button>
+        <button class="chip" data-min="5">5m</button>
+        <button class="chip" data-min="10">10m</button>
+        <button class="chip" data-min="25">25m</button>
+      </div>
+      <div class="btnrow">
+        <input type="number" id="tmMin" min="0" max="99" value="5" aria-label="Minutes">
+        <span style="color:var(--muted)">:</span>
+        <input type="number" id="tmSec" min="0" max="59" value="0" aria-label="Seconds">
+        <button class="btn" id="tmSet">Set</button>
+      </div>
+      <div class="btnrow">
+        <button class="btn primary" id="tmStart">Start</button>
+        <button class="btn" id="tmReset">Reset</button>
+      </div>
+    </section>
+
+    <!-- POMODORO -->
+    <section class="panel" data-panel="pomodoro" aria-label="Pomodoro focus timer">
+      <div class="digits" id="pmDisplay">25:00</div>
+      <div class="hint" id="pmPhase">FOCUS · CYCLE 1</div>
+      <div class="btnrow">
+        <button class="btn primary" id="pmStart">Start</button>
+        <button class="btn" id="pmSkip">Skip</button>
+        <button class="btn" id="pmReset">Reset</button>
+      </div>
+    </section>
+
+    <!-- ALARM -->
+    <section class="panel" data-panel="alarm" aria-label="Alarms">
+      <div class="btnrow">
+        <input type="time" id="alTime" value="07:00" aria-label="Alarm time">
+        <button class="btn primary" id="alAdd">Add alarm</button>
+      </div>
+      <ul class="alarms" id="alList"></ul>
+      <div class="hint">Alarms use your local system clock</div>
+    </section>
+  </div>
+</main>
+
+<nav id="hud" aria-label="Views">
+  <button data-view="clock" class="active">Clock</button>
+  <button data-view="stopwatch">Stopwatch</button>
+  <button data-view="timer">Timer</button>
+  <button data-view="pomodoro">Pomodoro</button>
+  <button data-view="alarm">Alarm</button>
+</nav>
+
+<button id="gear" aria-label="Open settings" aria-expanded="false">⚙</button>
+
+<div id="scrim"></div>
+
+<aside id="settings" aria-label="Settings" aria-hidden="true">
+  <header>
+    <h2>Settings</h2>
+    <button id="closeSettings" aria-label="Close settings">✕</button>
+  </header>
+
+  <section>
+    <h3>Time</h3>
+    <label class="row"><span>24-hour format</span><input type="checkbox" data-opt="format24"></label>
+    <label class="row"><span>Show seconds</span><input type="checkbox" data-opt="showSeconds"></label>
+    <label class="row"><span>Show milliseconds</span><input type="checkbox" data-opt="showMs"></label>
+    <label class="row"><span>Blinking separator</span><input type="checkbox" data-opt="blinkColon"></label>
+    <label class="row"><span>Timezone</span>
+      <select data-opt="timezone">
+        <option value="local">Local system</option>
+        <option value="UTC">UTC</option>
+        <option value="America/New_York">EST — New York</option>
+        <option value="America/Chicago">CST — Chicago</option>
+        <option value="America/Denver">MST — Denver</option>
+        <option value="America/Los_Angeles">PST — Los Angeles</option>
+        <option value="America/Sao_Paulo">BRT — São Paulo</option>
+        <option value="Europe/London">GMT — London</option>
+        <option value="Europe/Paris">CET — Paris</option>
+        <option value="Europe/Berlin">CET — Berlin</option>
+        <option value="Europe/Moscow">MSK — Moscow</option>
+        <option value="Africa/Cairo">EET — Cairo</option>
+        <option value="Africa/Lagos">WAT — Lagos</option>
+        <option value="Asia/Dubai">GST — Dubai</option>
+        <option value="Asia/Kolkata">IST — Kolkata</option>
+        <option value="Asia/Shanghai">CST — Shanghai</option>
+        <option value="Asia/Singapore">SGT — Singapore</option>
+        <option value="Asia/Tokyo">JST — Tokyo</option>
+        <option value="Asia/Seoul">KST — Seoul</option>
+        <option value="Australia/Sydney">AEDT — Sydney</option>
+        <option value="Pacific/Auckland">NZDT — Auckland</option>
+      </select>
+    </label>
+  </section>
+
+  <section>
+    <h3>Appearance</h3>
+    <label class="row"><span>Theme</span>
+      <select data-opt="theme">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="oled">OLED / True Black</option>
+        <option value="neon">Neon</option>
+        <option value="pastel">Pastel</option>
+        <option value="mono">Monochrome</option>
+      </select>
+    </label>
+    <div class="row"><span>Accent colour</span><div class="swatches" id="swatches"></div></div>
+    <label class="row"><span>Typography</span>
+      <select data-opt="font">
+        <option value="digital">Digital / 7-segment</option>
+        <option value="sans">Modern sans-serif</option>
+        <option value="mono">Classic monospace</option>
+        <option value="serif">Elegant serif</option>
+      </select>
+    </label>
+    <label class="row"><span>Background</span>
+      <select data-opt="bg">
+        <option value="solid">Solid colour</option>
+        <option value="gradient">Smooth gradient</option>
+        <option value="particles">Ambient particles</option>
+        <option value="photo">Landscape photo</option>
+      </select>
+    </label>
+    <label class="row"><span>High contrast</span><input type="checkbox" data-opt="contrast"></label>
+  </section>
+
+  <section>
+    <h3>Display</h3>
+    <label class="row"><span>Day of week</span><input type="checkbox" data-opt="showDay"></label>
+    <label class="row"><span>Calendar date</span><input type="checkbox" data-opt="showDate"></label>
+    <label class="row"><span>Timezone label</span><input type="checkbox" data-opt="showTz"></label>
+    <label class="row"><span>Auto-hide UI (3s)</span><input type="checkbox" data-opt="autoHide"></label>
+    <label class="row"><span>Prevent screen sleep</span><input type="checkbox" data-opt="wakeLock"></label>
+    <label class="row"><span>Burn-in protection</span><input type="checkbox" data-opt="burnIn"></label>
+    <label class="row"><span>Auto-dim at night</span><input type="checkbox" data-opt="autoDim"></label>
+    <label class="row"><span>Weather widget</span><input type="checkbox" data-opt="weather"></label>
+  </section>
+
+  <section>
+    <h3>Keyboard shortcuts</h3>
+    <p class="hint" style="text-align:left;line-height:1.9">
+      <b>F</b> fullscreen · <b>1</b>/<b>2</b> 24h/12h · <b>S</b> seconds · <b>M</b> milliseconds<br>
+      <b>T</b> cycle theme · <b>G</b> settings · <b>D</b> date · <b>Space</b> start/pause<br>
+      <b>Esc</b> close / dismiss · <b>H</b> hide UI
+    </p>
+  </section>
+</aside>
+
+<div id="ringOverlay" role="alertdialog" aria-label="Alarm ringing">
+  <p>Alarm</p>
+  <div id="ringLabel">07:00</div>
+  <div class="btnrow">
+    <button class="btn" id="ringSnooze">Snooze 5 min</button>
+    <button class="btn primary" id="ringDismiss">Dismiss</button>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="ariaLive" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const p2 = n => String(n).padStart(2, "0");
+const root = document.documentElement;
+
+let toastTimer;
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function hexA(hex, a){
+  hex = String(hex).replace("#","");
+  if(hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const n = parseInt(hex, 16) || 0;
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+/* ============================================================
+   AUDIO
+   ============================================================ */
+let actx = null;
+function audioCtx(){
+  if(!actx){
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return null; }
+  }
+  if(actx.state === "suspended") actx.resume().catch(()=>{});
+  return actx;
+}
+function beep(freq = 880, dur = .14, type = "sine", vol = .18, delay = 0){
+  const c = audioCtx(); if(!c) return;
+  const t0 = c.currentTime + delay;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t0); o.stop(t0 + dur + .04);
+}
+function chime(){
+  beep(880, .16, "sine", .20, 0);
+  beep(1174, .18, "sine", .18, .18);
+  beep(1568, .34, "sine", .16, .38);
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STORE_KEY = "chronos.v1";
+const DEFAULTS = {
+  format24: true,
+  showSeconds: true,
+  showMs: false,
+  blinkColon: true,
+  timezone: "local",
+  theme: "oled",
+  accent: "#5eead4",
+  font: "digital",
+  bg: "gradient",
+  contrast: false,
+  showDay: true,
+  showDate: true,
+  showTz: false,
+  autoHide: true,
+  wakeLock: false,
+  burnIn: true,
+  autoDim: false,
+  weather: false,
+  alarms: [],
+  photoSeed: Math.floor(Math.random() * 9999)
+};
+
+function loadState(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+    const s = Object.assign({}, DEFAULTS, raw);
+    if(!Array.isArray(s.alarms)) s.alarms = [];
+    return s;
+  } catch(e){ return Object.assign({}, DEFAULTS); }
+}
+const state = loadState();
+
+let saveTimer;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+  }, 150);
+}
+
+/* ============================================================
+   THEMES + FONTS
+   ============================================================ */
+const THEMES = {
+  dark:   { bg:"#0b0d12", bg2:"#141824", fg:"#eef2f8", muted:"#8b93a7", scheme:"dark"  },
+  light:  { bg:"#f5f7fc", bg2:"#e6ebf5", fg:"#11141c", muted:"#5b6376", scheme:"light" },
+  oled:   { bg:"#000000", bg2:"#000000", fg:"#ffffff", muted:"#8a8a8a", scheme:"dark"  },
+  neon:   { bg:"#05010f", bg2:"#140030", fg:"#eafcff", muted:"#a98bff", scheme:"dark"  },
+  pastel: { bg:"#fdf6f0", bg2:"#eef2ff", fg:"#3b3550", muted:"#8b82a8", scheme:"light" },
+  mono:   { bg:"#101010", bg2:"#1b1b1b", fg:"#e9e9e9", muted:"#8a8a8a", scheme:"dark"  }
+};
+
+const FONTS = {
+  digital: "'Orbitron','Share Tech Mono',ui-monospace,monospace",
+  sans:    "'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",
+  mono:    "ui-monospace,'SF Mono',Menlo,Consolas,'Courier New',monospace",
+  serif:   "'Playfair Display',Georgia,'Times New Roman',serif"
+};
+
+const ACCENTS = ["#5eead4","#38bdf8","#a78bfa","#f472b6","#fb7185","#fbbf24","#4ade80","#f8fafc"];
+
+/* ============================================================
+   APPLY: THEME / FONT / BACKGROUND / VISIBILITY
+   ============================================================ */
+function applyTheme(){
+  const t = THEMES[state.theme] || THEMES.dark;
+  const light = t.scheme === "light";
+  root.style.setProperty("--bg", t.bg);
+  root.style.setProperty("--bg2", t.bg2);
+  root.style.setProperty("--fg", state.contrast ? (light ? "#000000" : "#ffffff") : t.fg);
+  root.style.setProperty("--muted", state.contrast ? (light ? "#333333" : "#cccccc") : t.muted);
+  root.style.setProperty("--accent", state.accent);
+  root.style.setProperty("--glow", state.contrast ? "none" : `0 0 .35em ${hexA(state.accent, .42)}`);
+  root.style.setProperty("--line", light ? "rgba(0,0,0,.14)" : "rgba(255,255,255,.14)");
+  root.style.setProperty("--hud-bg", light ? "rgba(255,255,255,.65)" : "rgba(20,22,28,.55)");
+  root.style.colorScheme = t.scheme;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute("content", t.bg);
+}
+
+function applyFont(){
+  root.style.setProperty("--font", FONTS[state.font] || FONTS.sans);
+}
+
+function applyBackground(){
+  const layer = $("#bgLayer");
+  layer.classList.remove("gradient","photo");
+  layer.style.backgroundImage = "";
+
+  document.body.classList.toggle("bg-particles", state.bg === "particles");
+
+  if(state.bg === "gradient"){
+    layer.classList.add("gradient");
+  } else if(state.bg === "photo"){
+    layer.classList.add("photo");
+    layer.style.backgroundImage =
+      `url("https://picsum.photos/seed/${state.photoSeed}/1920/1080")`;
+  }
+  setParticles(state.bg === "particles");
+}
+
+function applyVisibility(){
+  const showS  = !!state.showSeconds;
+  const showMs = showS && !!state.showMs;
+
+  $("#segS").style.display    = showS ? "" : "none";
+  $("#colon2").style.display  = showS ? "" : "none";
+  $("#segMs").style.display   = showMs ? "" : "none";
+  $("#ampm").style.display    = state.format24 ? "none" : "";
+  $("#dayLine").style.display = state.showDay ? "" : "none";
+  $("#dateLine").style.display= state.showDate ? "" : "none";
+  $("#tzLine").style.display  = state.showTz ? "" : "none";
+
+  document.body.classList.toggle("has-ms", showMs);
+
+  const tzLabel = state.timezone === "local"
+    ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "Local")
+    : state.timezone;
+  $("#tzLine").textContent = tzLabel.replace(/_/g, " ");
+}
+
+function applyAll(){
+  applyTheme();
+  applyFont();
+  applyBackground();
+  applyVisibility();
+  applyDim();
+  syncControls();
+}
+
+/* ============================================================
+   CLOCK
+   ============================================================ */
+const fmtCache = {};
+function getFmt(tz){
+  if(!fmtCache[tz]){
+    fmtCache[tz] = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hourCycle: "h23",
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      timeZone: tz === "local" ? undefined : tz
+    });
+  }
+  return fmtCache[tz];
+}
+
+const cur = { h: 0, mi: 0, s: 0, day: "", date: "" };
+let lastTickKey = "";
+let lastAriaKey = "";
+
+function computeNow(){
+  const now = new Date();
+  let parts;
+  try {
+    parts = getFmt(state.timezone).formatToParts(now);
+  } catch(e){
+    parts = getFmt("local").formatToParts(now);
+  }
+  const m = {};
+  for(const p of parts) m[p.type] = p.value;
+  cur.h  = parseInt(m.hour, 10) || 0;
+  cur.mi = parseInt(m.minute, 10) || 0;
+  cur.s  = parseInt(m.second, 10) || 0;
+  cur.day  = m.weekday || "";
+  cur.date = `${m.day || ""} ${m.month || ""} ${m.year || ""}`.trim();
+}
+
+function renderClock(){
+  let h = cur.h, suffix = "";
+  if(!state.format24){
+    suffix = h >= 12 ? "PM" : "AM";
+    h = h % 12;
+    if(h === 0) h = 12;
+  }
+  $("#segH").textContent = state.format24 ? p2(h) : String(h);
+  $("#segM").textContent = p2(cur.mi);
+  $("#segS").textContent = p2(cur.s);
+  $("#ampm").textContent = suffix;
+
+  const blinkOff = state.blinkColon && state.showSeconds && (cur.s % 2 === 1);
+  $("#colon1").classList.toggle("off", blinkOff);
+  $("#colon2").classList.toggle("off", blinkOff);
+
+  $("#dayLine").textContent  = cur.day;
+  $("#dateLine").textContent = cur.date;
+
+  /* Accessibility: announce once per minute */
+  const ariaKey = state.timezone + "|" + cur.h + ":" + cur.mi;
+  if(ariaKey !== lastAriaKey){
+    lastAriaKey = ariaKey;
+    const spoken = state.format24
+      ? `${p2(cur.h)}:${p2(cur.mi)}`
+      : `${((cur.h % 12) || 12)}:${p2(cur.mi)} ${cur.h >= 12 ? "PM" : "AM"}`;
+    const extras = [];
+    if(state.showDay)  extras.push(cur.day);
+    if(state.showDate) extras.push(cur.date);
+    $("#ariaLive").textContent =
+      `The time is ${spoken}.` + (extras.length ? " " + extras.join(", ") + "." : "");
+    $("#timeLine").setAttribute("aria-label", `Current time ${spoken}`);
+  }
+}
+
+function frame(){
+  const now = new Date();
+  const key = state.timezone + "|" + Math.floor(now.getTime() / 1000);
+  if(key !== lastTickKey){
+    lastTickKey = key;
+    computeNow();
+    renderClock();
+  }
+  if(state.showMs && state.showSeconds){
+    $("#segMs").textContent = "." + String(now.getMilliseconds()).padStart(3, "0");
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   PARTICLES
+   ============================================================ */
+const cv  = $("#fx");
+const ctx = cv.getContext("2d");
+let pts = [], pRun = false, pRaf = null;
+
+function sizeCanvas(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width  = Math.floor(window.innerWidth  * dpr);
+  cv.height = Math.floor(window.innerHeight * dpr);
+  cv.style.width  = window.innerWidth + "px";
+  cv.style.height = window.innerHeight + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function initPts(){
+  const n = Math.round(Math.min(90, (window.innerWidth * window.innerHeight) / 22000));
+  pts = Array.from({ length: n }, () => ({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: Math.random() * 1.8 + .6,
+    vx: (Math.random() - .5) * .12,
+    vy: -(Math.random() * .26 + .05),
+    a: Math.random() * .5 + .15
+  }));
+}
+function drawPts(){
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  const col = (getComputedStyle(root).getPropertyValue("--accent") || "#fff").trim() || "#fff";
+  for(const p of pts){
+    p.x += p.vx; p.y += p.vy;
+    if(p.y < -12){ p.y = window.innerHeight + 12; p.x = Math.random() * window.innerWidth; }
+    if(p.x < -12) p.x = window.innerWidth + 12;
+    if(p.x > window.innerWidth + 12) p.x = -12;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = col;
+    ctx.globalAlpha = p.a;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  if(pRun) pRaf = requestAnimationFrame(drawPts);
+}
+function setParticles(on){
+  if(on && !pRun){
+    pRun = true; sizeCanvas(); initPts(); drawPts();
+  } else if(!on && pRun){
+    pRun = false;
+    cancelAnimationFrame(pRaf);
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  }
+}
+window.addEventListener("resize", () => {
+  if(pRun){ sizeCanvas(); initPts(); }
+});
+
+/* ============================================================
+   SETTINGS UI
+   ============================================================ */
+function buildSwatches(){
+  const wrap = $("#swatches");
+  wrap.innerHTML = "";
+  ACCENTS.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "sw" + (c.toLowerCase() === String(state.accent).toLowerCase() ? " sel" : "");
+    b.style.background = c;
+    b.type = "button";
+    b.setAttribute("aria-label", "Accent " + c);
+    b.addEventListener("click", () => {
+      state.accent = c; save(); applyTheme(); applyBackground(); buildSwatches();
+    });
+    wrap.appendChild(b);
+  });
+  const custom = document.createElement("input");
+  custom.type = "color";
+  custom.value = state.accent;
+  custom.setAttribute("aria-label", "Custom accent colour");
+  custom.addEventListener("input", e => {
+    state.accent = e.target.value;
+    save(); applyTheme(); applyBackground();
+    $$("#swatches .sw").forEach(s => s.classList.remove("sel"));
+  });
+  wrap.appendChild(custom);
+}
+
+function syncControls(){
+  $$("[data-opt]").forEach(el => {
+    const k = el.dataset.opt;
+    if(el.type === "checkbox") el.checked = !!state[k];
+    else el.value = state[k];
+  });
+}
+
+function wireControls(){
+  $$("[data-opt]").forEach(el => {
+    el.addEventListener("change", () => {
+      const k = el.dataset.opt;
+      state[k] = el.type === "checkbox" ? el.checked : el.value;
+      save();
+      applyAll();
+      if(k === "wakeLock"){ state.wakeLock ? requestWakeLock() : releaseWakeLock(); }
+      if(k === "weather"){ state.weather ? fetchWeather() : ($("#weather").hidden = true); }
+      if(k === "burnIn" && !state.burnIn) $("#clockWrap").style.transform = "";
+      if(k === "autoHide" && !state.autoHide) document.body.classList.remove("idle");
+      if(k === "timezone") lastTickKey = "";
+      bumpActivity();
+    });
+  });
+}
+
+function openSettings(open){
+  $("#settings").classList.toggle("open", open);
+  $("#settings").setAttribute("aria-hidden", String(!open));
+  $("#scrim").classList.toggle("show", open);
+  $("#gear").setAttribute("aria-expanded", String(open));
+  document.body.classList.remove("idle");
+  if(!open) bumpActivity();
+}
+
+/* ============================================================
+   VIEW SWITCHING
+   ============================================================ */
+let currentView = "clock";
+function setView(v){
+  currentView = v;
+  document.body.classList.toggle("tool-open", v !== "clock");
+  $$("#panels .panel").forEach(p => p.classList.toggle("active", p.dataset.panel === v));
+  $$("#hud [data-view]").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+}
+$$("#hud [data-view]").forEach(b => {
+  b.addEventListener("click", () => { setView(b.dataset.view); bumpActivity(); });
+});
+
+/* ============================================================
+   STOPWATCH
+   ============================================================ */
+const sw = { running: false, start: 0, elapsed: 0, raf: null, laps: [] };
+
+function swMs(){ return sw.elapsed + (sw.running ? performance.now() - sw.start : 0); }
+function swFormat(ms){
+  const cs = Math.floor(ms / 10) % 100;
+  const s  = Math.floor(ms / 1000) % 60;
+  const m  = Math.floor(ms / 60000) % 60;
+  const h  = Math.floor(ms / 3600000);
+  const base = h > 0 ? `${h}:${p2(m)}:${p2(s)}` : `${p2(m)}:${p2(s)}`;
+  return base + "." + p2(cs);
+}
+function swRender(){ $("#swDisplay").textContent = swFormat(swMs()); }
+function swLoop(){
+  if(!sw.running) return;
+  swRender();
+  sw.raf = requestAnimationFrame(swLoop);
+}
+function swToggle(){
+  if(sw.running){
+    sw.elapsed = swMs();
+    sw.running = false;
+    cancelAnimationFrame(sw.raf);
+    $("#swStart").textContent = "Start";
+  } else {
+    sw.start = performance.now();
+    sw.running = true;
+    $("#swStart").textContent = "Pause";
+    swLoop();
+  }
+  audioCtx();
+}
+function swReset(){
+  sw.running = false;
+  cancelAnimationFrame(sw.raf);
+  sw.elapsed = 0; sw.laps = [];
+  $("#swStart").textContent = "Start";
+  $("#swLaps").innerHTML = "";
+  swRender();
+}
+function swLap(){
+  if(!sw.running && sw.elapsed === 0) return;
+  sw.laps.unshift(swMs());
+  const li = document.createElement("li");
+  li.innerHTML = `<span>Lap ${sw.laps.length}</span><span>${swFormat(sw.laps[0])}</span>`;
+  $("#swLaps").prepend(li);
+}
+$("#swStart").addEventListener("click", swToggle);
+$("#swReset").addEventListener("click", swReset);
+$("#swLap").addEventListener("click", swLap);
+
+/* ============================================================
+   COUNTDOWN TIMER
+   ============================================================ */
+const tm = { total: 5 * 60000, remaining: 5 * 60000, running: false, endAt: 0, raf: null };
+
+function tmFormat(ms){
+  const total = Math.ceil(ms / 1000);
+  const s = total % 60, m = Math.floor(total / 60) % 60, h = Math.floor(total / 3600);
+  return h > 0 ? `${h}:${p2(m)}:${p2(s)}` : `${p2(m)}:${p2(s)}`;
+}
+function tmRender(){ $("#tmDisplay").textContent = tmFormat(Math.max(0, tm.remaining)); }
+function tmFinish(){
+  tm.running = false;
+  $("#tmStart").textContent = "Start";
+  chime();
+  toast("Time's up!");
+  document.body.classList.add("dim");
+  setTimeout(() => applyDim(), 2500);
+}
+function tmLoop(){
+  if(!tm.running) return;
+  tm.remaining = Math.max(0, tm.endAt - performance.now());
+  tmRender();
+  if(tm.remaining <= 0){ tmFinish(); return; }
+  tm.raf = requestAnimationFrame(tmLoop);
+}
+function tmToggle(){
+  audioCtx();
+  if(tm.running){
+    tm.remaining = Math.max(0, tm.endAt - performance.now());
+    tm.running = false;
+    cancelAnimationFrame(tm.raf);
+    $("#tmStart").textContent = "Start";
+  } else {
+    if(tm.remaining <= 0) tm.remaining = tm.total;
+    tm.endAt = performance.now() + tm.remaining;
+    tm.running = true;
+    $("#tmStart").textContent = "Pause";
+    tmLoop();
+  }
+}
+function tmReset(){
+  tm.running = false;
+  cancelAnimationFrame(tm.raf);
+  tm.remaining = tm.total;
+  $("#tmStart").textContent = "Start";
+  tmRender();
+}
+$("#tmStart").addEventListener("click", tmToggle);
+$("#tmReset").addEventListener("click", tmReset);
+$("#tmSet").addEventListener("click", () => {
+  const m = Math.max(0, Math.min(99, parseInt($("#tmMin").value, 10) || 0));
+  const s = Math.max(0, Math.min(59, parseInt($("#tmSec").value, 10) || 0));
+  tm.total = (m * 60 + s) * 1000;
+  if(tm.total <= 0) tm.total = 60000;
+  tm.remaining = tm.total;
+  tm.running = false;
+  cancelAnimationFrame(tm.raf);
+  $("#tmStart").textContent = "Start";
+  tmRender();
+});
+$$("[data-min]").forEach(b => {
+  b.addEventListener("click", () => {
+    const m = parseInt(b.dataset.min, 10);
+    $("#tmMin").value = m;
+    $("#tmSec").value = 0;
+    $("#tmSet").click();
+  });
+});
+
+/* ============================================================
+   POMODORO
+   ============================================================ */
+const PHASES = {
+  focus: { label: "FOCUS",      mins: 25 },
+  short: { label: "SHORT BREAK", mins: 5 },
+  long:  { label: "LONG BREAK",  mins: 15 }
+};
+const pm = { phase: "focus", cycle: 1, remaining: 25 * 60000, running: false, endAt: 0, raf: null };
+
+function pmRender(){
+  $("#pmDisplay").textContent = tmFormat(Math.max(0, pm.remaining));
+  $("#pmPhase").textContent = `${PHASES[pm.phase].label} · CYCLE ${pm.cycle}`;
+  $("#pmStart").textContent = pm.running ? "Pause" : "Start";
+}
+function pmSetPhase(phase, autoStart){
+  pm.phase = phase;
+  pm.remaining = PHASES[phase].mins * 60000;
+  pm.running = false;
+  cancelAnimationFrame(pm.raf);
+  pmRender();
+  if(autoStart) pmToggle();
+}
+function pmNext(autoStart){
+  if(pm.phase === "focus"){
+    if(pm.cycle % 4 === 0) pmSetPhase("long", autoStart);
+    else pmSetPhase("short", autoStart);
+  } else {
+    pm.cycle++;
+    pmSetPhase("focus", autoStart);
+  }
+}
+function pmLoop(){
+  if(!pm.running) return;
+  pm.remaining = Math.max(0, pm.endAt - performance.now());
+  pmRender();
+  if(pm.remaining <= 0){
+    chime();
+    toast(pm.phase === "focus" ? "Focus session complete!" : "Break over — back to focus.");
+    pmNext(true);
+    return;
+  }
+  pm.raf = requestAnimationFrame(pmLoop);
+}
+function pmToggle(){
+  audioCtx();
+  if(pm.running){
+    pm.remaining = Math.max(0, pm.endAt - performance.now());
+    pm.running = false;
+    cancelAnimationFrame(pm.raf);
+  } else {
+    if(pm.remaining <= 0) pm.remaining = PHASES[pm.phase].mins * 60000;
+    pm.endAt = performance.now() + pm.remaining;
+    pm.running = true;
+    pmLoop();
+  }
+  pmRender();
+}
+$("#pmStart").addEventListener("click", pmToggle);
+$("#pmSkip").addEventListener("click", () => { pmNext(false); });
+$("#pmReset").addEventListener("click", () => {
+  pm.cycle = 1;
+  pmSetPhase("focus", false);
+});
+
+/* ============================================================
+   ALARMS
+   ============================================================ */
+let ringing = null;
+let ringInterval = null;
+let snoozeAt = 0;
+
+function renderAlarms(){
+  const ul = $("#alList");
+  ul.innerHTML = "";
+  if(!state.alarms.length){
+    const li = document.createElement("li");
+    li.style.justifyContent = "center";
+    li.style.color = "var(--muted)";
+    li.textContent = "No alarms yet";
+    ul.appendChild(li);
+    return;
+  }
+  state.alarms.forEach(a => {
+    const li = document.createElement("li");
+    const left = document.createElement("span");
+    left.className = "atime" + (a.on ? "" : " aoff");
+    left.textContent = a.time;
+    const right = document.createElement("span");
+    right.style.display = "flex";
+    right.style.gap = ".5rem";
+    right.style.alignItems = "center";
+
+    const toggle = document.createElement("button");
+    toggle.className = "chip";
+    toggle.textContent = a.on ? "ON" : "OFF";
+    toggle.setAttribute("aria-label", (a.on ? "Disable" : "Enable") + " alarm " + a.time);
+    toggle.addEventListener("click", () => {
+      a.on = !a.on; save(); renderAlarms();
+    });
+
+    const del = document.createElement("button");
+    del.className = "chip";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "Delete alarm " + a.time);
+    del.addEventListener("click", () => {
+      state.alarms = state.alarms.filter(x => x.id !== a.id);
+      save(); renderAlarms();
+    });
+
+    right.appendChild(toggle);
+    right.appendChild(del);
+    li.appendChild(left);
+    li.appendChild(right);
+    ul.appendChild(li);
+  });
+}
+
+$("#alAdd").addEventListener("click", () => {
+  const t = $("#alTime").value;
+  if(!t) return toast("Pick a time first");
+  state.alarms.push({ id: Date.now() + Math.random(), time: t, on: true, lastKey: "" });
+  save();
+  renderAlarms();
+  toast("Alarm set for " + t);
+  audioCtx();
+});
+
+function startRinging(alarm){
+  ringing = alarm;
+  $("#ringLabel").textContent = alarm.time;
+  $("#ringOverlay").classList.add("show");
+  chime();
+  clearInterval(ringInterval);
+  ringInterval = setInterval(chime, 2600);
+  document.body.classList.remove("idle");
+}
+function stopRinging(){
+  clearInterval(ringInterval);
+  ringInterval = null;
+  ringing = null;
+  $("#ringOverlay").classList.remove("show");
+}
+$("#ringDismiss").addEventListener("click", stopRinging);
+$("#ringSnooze").addEventListener("click", () => {
+  snoozeAt = Date.now() + 5 * 60000;
+  stopRinging();
+  toast("Snoozed 5 minutes");
+});
+
+/* Alarm check loop */
+setInterval(() => {
+  const now = new Date();
+  const hh = p2(now.getHours());
+  const mm = p2(now.getMinutes());
+  const stamp = now.toDateString() + " " + hh + ":" + mm;
+
+  state.alarms.forEach(a => {
+    if(!a.on) return;
+    if(a.time === hh + ":" + mm && a.lastKey !== stamp){
+      a.lastKey = stamp;
+      save();
+      if(!ringing) startRinging(a);
+    }
+  });
+
+  if(snoozeAt && Date.now() >= snoozeAt){
+    snoozeAt = 0;
+    if(!ringing) startRinging({ time: hh + ":" + mm });
+  }
+}, 1000);
+
+/* ============================================================
+   IDLE / AUTO-HIDE UI
+   ============================================================ */
+let idleTimer = null;
+function bumpActivity(){
+  document.body.classList.remove("idle");
+  clearTimeout(idleTimer);
+  if(!state.autoHide) return;
+  idleTimer = setTimeout(() => {
+    if($("#settings").classList.contains("open")) return;
+    if($("#ringOverlay").classList.contains("show")) return;
+    document.body.classList.add("idle");
+  }, 3000);
+}
+["mousemove","mousedown","touchstart","wheel","keydown","pointerdown"].forEach(ev => {
+  window.addEventListener(ev, bumpActivity, { passive: true });
+});
+
+/* ============================================================
+   WAKE LOCK
+   ============================================================ */
+let wakeLockObj = null;
+async function requestWakeLock(){
+  if(!("wakeLock" in navigator)) return;
+  try {
+    wakeLockObj = await navigator.wakeLock.request("screen");
+    wakeLockObj.addEventListener("release", () => { wakeLockObj = null; });
+  } catch(e){
+    toast("Wake Lock unavailable");
+    state.wakeLock = false; save(); syncControls();
+  }
+}
+function releaseWakeLock(){
+  if(wakeLockObj){ wakeLockObj.release().catch(()=>{}); wakeLockObj = null; }
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && state.wakeLock && !wakeLockObj){
+    requestWakeLock();
+  }
+});
+
+/* ============================================================
+   BURN-IN PROTECTION
+   ============================================================ */
+setInterval(() => {
+  if(!state.burnIn) return;
+  const x = (Math.random() * 8 - 4).toFixed(1);
+  const y = (Math.random() * 8 - 4).toFixed(1);
+  $("#clockWrap").style.transform = `translate(${x}px, ${y}px)`;
+}, 180000);
+
+/* ============================================================
+   AUTO-DIM (NIGHT MODE)
+   ============================================================ */
+function applyDim(){
+  const h = new Date().getHours();
+  const night = (h >= 22 || h < 7);
+  document.body.classList.toggle("dim", !!state.autoDim && night);
+}
+setInterval(applyDim, 60000);
+
+/* ============================================================
+   WEATHER (Open-Meteo — keyless, degrades gracefully)
+   ============================================================ */
+const WMO = {
+  0:["Clear","☀️"], 1:["Mainly clear","🌤️"], 2:["Partly cloudy","⛅"], 3:["Overcast","☁️"],
+  45:["Fog","🌫️"], 48:["Fog","🌫️"], 51:["Drizzle","🌦️"], 53:["Drizzle","🌦️"], 55:["Drizzle","🌦️"],
+  61:["Rain","🌧️"], 63:["Rain","🌧️"], 65:["Heavy rain","🌧️"], 71:["Snow","🌨️"], 73:["Snow","🌨️"],
+  75:["Heavy snow","❄️"], 77:["Snow grains","🌨️"], 80:["Showers","🌦️"], 81:["Showers","🌦️"],
+  82:["Heavy showers","⛈️"], 85:["Snow showers","🌨️"], 86:["Snow showers","🌨️"],
+  95:["Thunderstorm","⛈️"], 96:["Thunderstorm","⛈️"], 99:["Thunderstorm","⛈️"]
+};
+
+async function fetchWeather(){
+  const widget = $("#weather");
+  if(!state.weather){ widget.hidden = true; return; }
+  widget.hidden = false;
+  $("#wxIcon").textContent = "⏳";
+  $("#wxTemp").textContent = "…";
+
+  const fallback = () => {
+    $("#wxIcon").textContent = "—";
+    $("#wxTemp").textContent = "No data";
+  };
+
+  if(!navigator.geolocation){ fallback(); return; }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+      const t = Math.round(data.current.temperature_2m);
+      const code = data.current.weather_code;
+      const info = WMO[code] || ["—","🌡️"];
+      $("#wxIcon").textContent = info[1];
+      $("#wxTemp").textContent = `${t}°C`;
+      widget.title = info[0];
+    } catch(e){
+      fallback();
+    }
+  }, fallback, { timeout: 8000 });
+}
+
+/* ============================================================
+   FULLSCREEN
+   ============================================================ */
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    (document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen || function(){}).call(document.documentElement);
+  } else {
+    (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+  }
+}
+
+/* ============================================================
+   KEYBOARD SHORTCUTS
+   ============================================================ */
+const THEME_ORDER = ["oled","dark","neon","light","pastel","mono"];
+
+function primaryAction(){
+  if(currentView === "stopwatch") swToggle();
+  else if(currentView === "timer") tmToggle();
+  else if(currentView === "pomodoro") pmToggle();
+}
+
+document.addEventListener("keydown", e => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  if(tag === "input" || tag === "select" || tag === "textarea") return;
+  if(e.metaKey || e.ctrlKey || e.altKey) return;
+
+  const k = e.key.toLowerCase();
+
+  switch(k){
+    case "f": toggleFullscreen(); break;
+    case "1": state.format24 = true;  save(); applyAll(); toast("24-hour"); break;
+    case "2": state.format24 = false; save(); applyAll(); toast("12-hour"); break;
+    case "s": state.showSeconds = !state.showSeconds; save(); applyAll(); break;
+    case "m": state.showMs = !state.showMs; save(); applyAll(); break;
+    case "d": state.showDate = !state.showDate; save(); applyAll(); break;
+    case "t": {
+      const i = THEME_ORDER.indexOf(state.theme);
+      state.theme = THEME_ORDER[(i + 1) % THEME_ORDER.length];
+      save(); applyAll(); toast("Theme: " + state.theme);
+      break;
+    }
+    case "g": openSettings(!$("#settings").classList.contains("open")); break;
+    case "h": document.body.classList.toggle("idle"); break;
+    case "b": state.burnIn = !state.burnIn; save(); syncControls(); break;
+    case "w": state.weather = !state.weather; save(); syncControls(); fetchWeather(); break;
+    case " ":
+      e.preventDefault();
+      primaryAction();
+      break;
+    case "escape":
+      if($("#ringOverlay").classList.contains("show")) stopRinging();
+      else if($("#settings").classList.contains("open")) openSettings(false);
+      break;
+  }
+});
+
+/* ============================================================
+   PWA MANIFEST (inline, works offline once cached by browser)
+   ============================================================ */
+(function injectManifest(){
+  const icon = "data:image/svg+xml;base64," + btoa(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+      <rect width="512" height="512" rx="96" fill="#0b0d12"/>
+      <circle cx="256" cy="256" r="150" fill="none" stroke="#5eead4" stroke-width="18"/>
+      <path d="M256 150v110l72 48" fill="none" stroke="#5eead4" stroke-width="20" stroke-linecap="round"/>
+    </svg>`
+  );
+  const manifest = {
+    name: "Chronos — Fluid Clock",
+    short_name: "Chronos",
+    start_url: ".",
+    display: "standalone",
+    orientation: "any",
+    background_color: "#000000",
+    theme_color: "#000000",
+    description: "A fluid, clutter-free, responsive clock.",
+    icons: [
+      { src: icon, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+    ]
+  };
+  try {
+    const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+    const link = document.createElement("link");
+    link.rel = "manifest";
+    link.href = URL.createObjectURL(blob);
+    document.head.appendChild(link);
+  } catch(e){ /* ignore */ }
+})();
+
+/* ============================================================
+   WIRE UP STATIC UI
+   ============================================================ */
+$("#gear").addEventListener("click", () => {
+  openSettings(!$("#settings").classList.contains("open"));
+});
+$("#closeSettings").addEventListener("click", () => openSettings(false));
+$("#scrim").addEventListener("click", () => openSettings(false));
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  buildSwatches();
+  wireControls();
+  applyAll();
+  renderAlarms();
+  swRender();
+  tmRender();
+  pmRender();
+  setView("clock");
+  bumpActivity();
+
+  if(state.wakeLock) requestWakeLock();
+  if(state.weather) fetchWeather();
+
+  /* clock loop */
+  requestAnimationFrame(frame);
+
+  /* keep secondary clocks in sync */
+  setInterval(() => { applyDim(); }, 60000);
+
+  /* document title mirrors the clock (nice for tabs) */
+  setInterval(() => {
+    const h = state.format24 ? p2(cur.h) : ((cur.h % 12) || 12);
+    document.title = `${h}:${p2(cur.mi)}${state.format24 ? "" : (cur.h >= 12 ? " PM" : " AM")} — Chronos`;
+  }, 5000);
+
+  console.log("%cChronos ready", "color:#5eead4;font-weight:700");
+}
+
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+})();
+</script>
+</body>
+</html>

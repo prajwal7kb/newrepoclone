@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APOLLO // Human Cellular Rejuvenation & Longevity Protocol</title>
+  
+  <!-- Typography Imports -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ==========================================================================
+       DESIGN SYSTEM & VARIABLES
+       ========================================================================== */
+    :root {
+      --bg-dark: #060608;
+      --bg-card: rgba(14, 18, 27, 0.55);
+      --bg-card-hover: rgba(22, 28, 42, 0.7);
+      
+      --accent-ice: #E0F2FE;
+      --accent-cyan: #0EA5E9;
+      --accent-cyan-glow: rgba(14, 165, 233, 0.35);
+      --accent-violet: #8B5CF6;
+
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      
+      --border-subtle: rgba(224, 242, 254, 0.1);
+      --border-hover: rgba(14, 165, 233, 0.4);
+
+      --font-heading: 'Syne', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-in-out-cubic: cubic-bezier(0.65, 0, 0.35, 1);
+    }
+
+    /* Reset & Base */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 16px;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(14, 165, 233, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-cyan);
+    }
+
+    /* Canvas Noise Overlay */
+    .noise-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.035;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Interactive DNA Dust Canvas */
+    #hero-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Typography Clamps */
+    h1, .hero-title {
+      font-family: var(--font-heading);
+      font-size: clamp(2.75rem, 7vw, 6.5rem);
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+
+    h2, .section-title {
+      font-family: var(--font-heading);
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      font-family: var(--font-heading);
+      font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+      font-weight: 700;
+    }
+
+    p {
+      color: var(--text-secondary);
+      line-height: 1.65;
+      font-size: clamp(0.95rem, 1.1vw, 1.125rem);
+    }
+
+    .mono-badge {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Layout Containers */
+    .container {
+      width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    section {
+      padding: 7rem 0;
+      position: relative;
+    }
+
+    /* Custom Glass Utility */
+    .glass-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.4s var(--ease-out-expo), transform 0.4s var(--ease-out-expo), box-shadow 0.4s var(--ease-out-expo);
+    }
+
+    .glass-panel:hover {
+      border-color: var(--border-hover);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px var(--accent-cyan-glow);
+    }
+
+    /* Navigation Bar */
+    header.nav-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 100;
+      background: rgba(6, 6, 8, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 1rem 0;
+    }
+
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--accent-cyan);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      position: relative;
+      box-shadow: 0 0 12px var(--accent-cyan-glow);
+    }
+
+    .brand-mark::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--accent-ice);
+      border-radius: 50%;
+    }
+
+    .brand-name {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: 0.1em;
+    }
+
+    .brand-sub {
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2.25rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--accent-ice);
+    }
+
+    .nav-status {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.85rem;
+      background: rgba(14, 165, 233, 0.08);
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      border-radius: 100px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-cyan);
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.4); }
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1.75rem;
+      border-radius: 100px;
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s var(--ease-out-expo);
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-ice) 0%, #BAE6FD 100%);
+      color: #030712;
+      box-shadow: 0 0 25px rgba(224, 242, 254, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 35px rgba(14, 165, 233, 0.5);
+      background: #ffffff;
+    }
+
+    .btn-secondary {
+      background: rgba(224, 242, 254, 0.05);
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(224, 242, 254, 0.12);
+      border-color: var(--accent-cyan);
+      color: var(--accent-ice);
+    }
+
+    /* HERO SECTION */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding-top: 8rem;
+      padding-bottom: 4rem;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .hero-tag {
+      color: var(--accent-cyan);
+      margin-bottom: 1.25rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hero-title span.highlight {
+      background: linear-gradient(135deg, var(--accent-ice) 30%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-description {
+      margin-top: 1.75rem;
+      margin-bottom: 2.5rem;
+      max-width: 580px;
+      font-size: 1.15rem;
+    }
+
+    .hero-cta-group {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    /* Metric Badges Horizontal Bar */
+    .metrics-bar {
+      margin-top: 3.5rem;
+      display: flex;
+      gap: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-val {
+      font-family: var(--font-heading);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent-ice);
+    }
+
+    .metric-lbl {
+      font-family: var(--font-mono);
+      font-size: 0.725rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Hero Bio Card Visual */
+    .hero-visual-card {
+      padding: 2.5rem;
+      background: linear-gradient(145deg, rgba(14, 21, 37, 0.6), rgba(6, 9, 16, 0.8));
+      border: 1px solid var(--border-subtle);
+      border-radius: 24px;
+      position: relative;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .dna-strands-visual {
+      width: 100%;
+      height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .strand-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed rgba(14, 165, 233, 0.3);
+      animation: spinRing 25s linear infinite;
+    }
+
+    .strand-ring:nth-child(1) { width: 220px; height: 220px; border-color: rgba(224, 242, 254, 0.2); }
+    .strand-ring:nth-child(2) { width: 160px; height: 160px; border-color: rgba(14, 165, 233, 0.4); animation-direction: reverse; animation-duration: 18s; }
+    .strand-ring:nth-child(3) { width: 100px; height: 100px; border-color: rgba(139, 92, 246, 0.5); animation-duration: 12s; }
+
+    @keyframes spinRing {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .core-node {
+      width: 44px;
+      height: 44px;
+      background: radial-gradient(circle, var(--accent-ice) 0%, var(--accent-cyan) 70%);
+      border-radius: 50%;
+      box-shadow: 0 0 35px var(--accent-cyan);
+      animation: pulseCore 3s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseCore {
+      from { transform: scale(0.9); box-shadow: 0 0 20px var(--accent-cyan); }
+      to { transform: scale(1.15); box-shadow: 0 0 45px var(--accent-ice); }
+    }
+
+    .live-feed-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.2rem;
+      background: rgba(6, 6, 8, 0.7);
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+      margin-top: 1.5rem;
+    }
+
+    /* BENTO BOX GRID SECTION */
+    .section-header {
+      margin-bottom: 3.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1.5rem;
+    }
+
+    .bento-card {
+      padding: 2.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 320px;
+      transform-style: preserve-3d;
+    }
+
+    .bento-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(14, 165, 233, 0.12), transparent 40%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .bento-1 { grid-column: span 7; }
+    .bento-2 { grid-column: span 5; }
+    .bento-3 { grid-column: span 5; }
+    .bento-4 { grid-column: span 7; }
+
+    .bento-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(14, 165, 233, 0.25);
+      display: grid;
+      place-items: center;
+      color: var(--accent-ice);
+      margin-bottom: 1.5rem;
+    }
+
+    .bento-content h3 {
+      margin-bottom: 0.75rem;
+      color: var(--text-primary);
+    }
+
+    .bento-meta {
+      margin-top: 1.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* BIOMETRIC OPTIMIZER SIMULATOR WIDGET */
+    .simulator-wrapper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.5rem;
+      padding: 3rem;
+      border-radius: 28px;
+      background: linear-gradient(160deg, rgba(14, 20, 32, 0.8), rgba(6, 8, 12, 0.95));
+      border: 1px solid var(--border-subtle);
+    }
+
+    .control-group {
+      margin-bottom: 2rem;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .control-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .control-val {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      color: var(--accent-ice);
+      font-weight: 600;
+    }
+
+    /* Custom Input Slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+    input[type=range]:focus {
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 6px;
+      cursor: pointer;
+      background: rgba(224, 242, 254, 0.1);
+      border-radius: 3px;
+      border: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: var(--accent-ice);
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -7px;
+      box-shadow: 0 0 15px var(--accent-cyan);
+      transition: transform 0.2s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .output-gauge-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 2rem;
+      background: rgba(6, 6, 8, 0.5);
+      border-radius: 20px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .gauge-svg-container {
+      position: relative;
+      width: 220px;
+      height: 220px;
+    }
+
+    .gauge-svg {
+      transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
+    }
+
+    .gauge-bg {
+      fill: none;
+      stroke: rgba(224, 242, 254, 0.08);
+      stroke-width: 12;
+    }
+
+    .gauge-fill {
+      fill: none;
+      stroke: url(#gauge-gradient);
+      stroke-width: 12;
+      stroke-linecap: round;
+      stroke-dasharray: 565.48;
+      stroke-dashoffset: 200;
+      transition: stroke-dashoffset 0.6s var(--ease-out-expo);
+    }
+
+    .gauge-center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .gauge-big-num {
+      font-family: var(--font-heading);
+      font-size: 3.25rem;
+      font-weight: 800;
+      color: var(--accent-ice);
+      line-height: 1;
+    }
+
+    .gauge-unit {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    .sim-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      width: 100%;
+      margin-top: 2rem;
+    }
+
+    .sim-stat-card {
+      padding: 1rem;
+      background: rgba(14, 20, 32, 0.6);
+      border-radius: 12px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* CLINICAL PROTOCOLS TIMELINE */
+    .timeline-container {
+      position: relative;
+      margin-top: 3rem;
+    }
+
+    .timeline-container::before {
+      content: '';
+      position: absolute;
+      left: 28px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--accent-cyan) 0%, rgba(139, 92, 246, 0.3) 100%);
+    }
+
+    .timeline-step {
+      display: flex;
+      gap: 2.5rem;
+      margin-bottom: 3rem;
+      position: relative;
+    }
+
+    .step-node {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--bg-dark);
+      border: 2px solid var(--accent-cyan);
+      display: grid;
+      place-items: center;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--accent-ice);
+      box-shadow: 0 0 20px var(--accent-cyan-glow);
+      flex-shrink: 0;
+      z-index: 2;
+    }
+
+    .step-body {
+      flex-grow: 1;
+      padding: 2rem;
+    }
+
+    /* INTERSECTION REVEAL ANIMATION */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(4, 4, 6, 0.95);
+      padding: 4rem 0 2rem 0;
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 4rem;
+    }
+
+    .footer-col p {
+      margin-top: 1rem;
+      max-width: 300px;
+      font-size: 0.9rem;
+    }
+
+    .footer-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent-ice);
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* RESPONSIVE BREAKPOINTS */
+    @media (max-width: 1024px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .bento-1, .bento-2, .bento-3, .bento-4 {
+        grid-column: span 12;
+      }
+      .simulator-wrapper {
+        grid-template-columns: 1fr;
+      }
+      .footer-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none; /* Mobile Menu Simplified */
+      }
+      .metrics-bar {
+        flex-direction: column;
+        gap: 1.25rem;
+      }
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+      .timeline-step {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .timeline-container::before {
+        left: 28px;
+      }
+      .footer-bottom {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Subtle Ambient Noise Overlay -->
+  <div class="noise-bg"></div>
+
+  <!-- Interactive Cellular DNA Dust Background Canvas -->
+  <canvas id="hero-canvas"></canvas>
+
+  <!-- Navigation -->
+  <header class="nav-header">
+    <div class="container nav-container">
+      <a href="#" class="brand-logo">
+        <div class="brand-mark"></div>
+        <div>
+          <div class="brand-name">APOLLO</div>
+          <div class="brand-sub">HUMAN LABS // 01</div>
+        </div>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#capabilities">Bento Architecture</a></li>
+        <li><a href="#simulator">Biometric Simulator</a></li>
+        <li><a href="#protocol">Protocol Steps</a></li>
+      </ul>
+
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="nav-status">
+          <div class="status-dot"></div>
+          <span class="mono-badge" style="color: var(--accent-ice);">SYSTEMS: OPTIMAL</span>
+        </div>
+        <a href="#simulator" class="btn btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.8rem;">Access Protocol</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="overview">
+    <div class="container">
+      <div class="hero-grid">
+        
+        <div class="reveal">
+          <div class="hero-tag mono-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20M5.05 5.05l13.9 13.9M5.05 18.95L18.95 5.05"/></svg>
+            EPIGENETIC REVERSAL SYSTEM v4.9
+          </div>
+          <h1 class="hero-title">
+            Redefining <br>
+            <span class="highlight">Mortality</span> <br>
+            A New Life.
+          </h1>
+          <p class="hero-description">
+            APOLLO is the pinnacle human rejuvenation platform. Integrating multi-omic cell reprogramming, targeted Yamanaka vector delivery, and quantum biomarker synthesis to systematically rewind biological age.
+          </p>
+          
+          <div class="hero-cta-group">
+            <a href="#simulator" class="btn btn-primary">
+              Launch Optimizer
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="#capabilities" class="btn btn-secondary">
+              Clinical Specs
+            </a>
+          </div>
+
+          <div class="metrics-bar">
+            <div class="metric-item">
+              <span class="metric-val">+34.2%</span>
+              <span class="metric-lbl">TELOMERE LENGTH RECOVERY</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">-12.8 YRS</span>
+              <span class="metric-lbl">AVERAGE BIOLOGICAL AGE RESET</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">99.4%</span>
+              <span class="metric-lbl">MITOCHONDRIAL EFFICIENCY</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Visual Interactive HUD Component -->
+        <div class="hero-visual-card glass-panel reveal">
+          <div class="mono-badge" style="display: flex; justify-content: space-between; color: var(--text-muted);">
+            <span>LIVE REPLAY // MATRIX</span>
+            <span style="color: var(--accent-cyan);">CHRONO-RESET</span>
+          </div>
+
+          <div class="dna-strands-visual">
+            <div class="strand-ring"></div>
+            <div class="strand-ring"></div>
+            <div class="strand-ring"></div>
+            <div class="core-node"></div>
+          </div>
+
+          <div class="live-feed-badge">
+            <div>
+              <div class="mono-badge" style="color: var(--text-muted); font-size: 0.65rem;">SENESCENT CLEARANCE</div>
+              <div style="font-family: var(--font-mono); font-weight: 600; color: var(--accent-ice); font-size: 0.95rem;">94.8 µmol/L</div>
+            </div>
+            <div>
+              <div class="mono-badge" style="color: var(--text-muted); font-size: 0.65rem;">CELLULAR ATP RATE</div>
+              <div style="font-family: var(--font-mono); font-weight: 600; color: var(--accent-cyan); font-size: 0.95rem;">3.4x BASELINE</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Bento Box Features Grid -->
+  <section id="capabilities">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="mono-badge" style="color: var(--accent-cyan);">CORE ARCHITECTURE // SYSTEM CAPABILITIES</div>
+        <h2 class="section-title">Rejuvenation Pillars</h2>
+        <p style="max-width: 600px;">Precision biotechnology designed to intervene across every hallmark of aging simultaneously.</p>
+      </div>
+
+      <div class="bento-grid">
+        
+        <!-- Card 1 -->
+        <div class="bento-card bento-1 glass-panel reveal">
+          <div>
+            <div class="bento-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="bento-content">
+              <h3>Epigenetic Reprogramming</h3>
+              <p>Targeted mRNA delivery of OSKM Yamanaka factors to reset cellular methylation clocks without inducing pluripotency loss. Restores youthful chromatin architecture across systemic tissue suites.</p>
+            </div>
+          </div>
+          <div class="bento-meta">
+            <span class="mono-badge" style="color: var(--accent-cyan);">VECTOR: LNP-Y3 PROTOCOL</span>
+            <span class="mono-badge" style="color: var(--text-muted);">EFFICACY: 99.7%</span>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bento-card bento-2 glass-panel reveal">
+          <div>
+            <div class="bento-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div class="bento-content">
+              <h3>Neural Adaptability</h3>
+              <p>Synaptic plasticity amplification via targeted neurotrophic matrix synthesis. Restores cognitive velocity and myelin sheath density to peak 20-year-old parameters.</p>
+            </div>
+          </div>
+          <div class="bento-meta">
+            <span class="mono-badge" style="color: var(--accent-cyan);">SYNAPSE LATENCY: < 1.2ms</span>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bento-card bento-3 glass-panel reveal">
+          <div>
+            <div class="bento-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div class="bento-content">
+              <h3>Bio-Quantum Transcriptomics</h3>
+              <p>Continuous sub-micron molecular monitoring. Real-time telemetry tracking of inflammation cascades, senescent cell burden, and telomerase catalytic cycles.</p>
+            </div>
+          </div>
+          <div class="bento-meta">
+            <span class="mono-badge" style="color: var(--accent-cyan);">SAMPLING: 10,000 / SEC</span>
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bento-card bento-4 glass-panel reveal">
+          <div>
+            <div class="bento-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="bento-content">
+              <h3>Mitochondrial Resurgence</h3>
+              <p>Direct insertion of synthetic NAD+ precursors coupled with selective mitophagy agents. Purges dysfunctional powerplants while triggering rapid mitochondrial biogenesis.</p>
+            </div>
+          </div>
+          <div class="bento-meta">
+            <span class="mono-badge" style="color: var(--accent-cyan);">ATP OUTPUT: +280%</span>
+            <span class="mono-badge" style="color: var(--text-muted);">ROS DAMAGE: ZERO</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Biometric Simulator Widget -->
+  <section id="simulator">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="mono-badge" style="color: var(--accent-cyan);">SIMULATION ENGINE // LIVE METRICS</div>
+        <h2 class="section-title">Biometric Optimizer</h2>
+        <p style="max-width: 600px;">Calibrate your chronological parameters to calculate your biological age trajectory post-APOLLO intervention.</p>
+      </div>
+
+      <div class="simulator-wrapper reveal">
+        
+        <!-- Controls Left Column -->
+        <div>
+          <!-- Slider 1 -->
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-label">Current Chronological Age</span>
+              <span class="control-val" id="age-val">45 Yrs</span>
+            </div>
+            <input type="range" id="age-slider" min="25" max="85" value="45">
+          </div>
+
+          <!-- Slider 2 -->
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-label">Protocol Intensity</span>
+              <span class="control-val" id="intensity-val">75%</span>
+            </div>
+            <input type="range" id="intensity-slider" min="20" max="100" value="75">
+          </div>
+
+          <!-- Slider 3 -->
+          <div class="control-group">
+            <div class="control-header">
+              <span class="control-label">Therapeutic Cycles</span>
+              <span class="control-val" id="cycles-val">3 Cycles</span>
+            </div>
+            <input type="range" id="cycles-slider" min="1" max="6" value="3">
+          </div>
+
+          <div style="margin-top: 2rem; padding: 1.25rem; background: rgba(14, 165, 233, 0.05); border-radius: 12px; border: 1px solid rgba(14, 165, 233, 0.2);">
+            <div class="mono-badge" style="color: var(--accent-cyan); margin-bottom: 0.5rem;">ESTIMATED REVERSAL DELTA</div>
+            <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-ice);" id="delta-display">-14.2 Years Reversal</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Output Gauge Right Column -->
+        <div class="output-gauge-box">
+          <div class="gauge-svg-container">
+            <svg class="gauge-svg" viewBox="0 0 200 200">
+              <defs>
+                <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#0EA5E9"/>
+                  <stop offset="100%" stop-color="#E0F2FE"/>
+                </linearGradient>
+              </defs>
+              <circle class="gauge-bg" cx="100" cy="100" r="90"/>
+              <circle class="gauge-fill" id="gauge-fill" cx="100" cy="100" r="90"/>
+            </svg>
+            <div class="gauge-center-text">
+              <div class="gauge-big-num" id="projected-age">30.8</div>
+              <div class="gauge-unit">TARGET BIO AGE</div>
+            </div>
+          </div>
+
+          <div class="sim-stats-grid">
+            <div class="sim-stat-card">
+              <div class="mono-badge" style="color: var(--text-muted);">PROJECTED LIFESPAN</div>
+              <div style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; color: var(--accent-ice);" id="lifespan-val">142 Yrs</div>
+            </div>
+            <div class="sim-stat-card">
+              <div class="mono-badge" style="color: var(--text-muted);">TELOMERE INTEGRITY</div>
+              <div style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; color: var(--accent-cyan);" id="telomere-val">98.4%</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Clinical Protocols Steps Timeline -->
+  <section id="protocol">
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="mono-badge" style="color: var(--accent-cyan);">TREATMENT ARCHITECTURE // SEQUENCE</div>
+        <h2 class="section-title">The Three-Phase Protocol</h2>
+        <p style="max-width: 600px;">From deep molecular profiling to complete biological systemic stabilization.</p>
+      </div>
+
+      <div class="timeline-container">
+        
+        <!-- Step 01 -->
+        <div class="timeline-step reveal">
+          <div class="step-node">01</div>
+          <div class="step-body glass-panel">
+            <div class="mono-badge" style="color: var(--accent-cyan); margin-bottom: 0.5rem;">PHASE 01 // WEEKS 01 - 04</div>
+            <h3>Multi-Omic Diagnostic Mapping</h3>
+            <p>Comprehensive sequencing of DNA methylation markers, single-cell transcriptomics, mitochondrial respiration rates, and deep proteomic mapping. We construct your high-fidelity Digital Biological Twin.</p>
+          </div>
+        </div>
+
+        <!-- Step 02 -->
+        <div class="timeline-step reveal">
+          <div class="step-node">02</div>
+          <div class="step-body glass-panel">
+            <div class="mono-badge" style="color: var(--accent-cyan); margin-bottom: 0.5rem;">PHASE 02 // WEEKS 05 - 16</div>
+            <h3>Targeted Epigenetic Reset</h3>
+            <p>Administration of LNP-encapsulated Yamanaka factors and specialized senolytics. Senescent cells are selectively cleared while somatic tissue undergoes controlled chromatin remodeling.</p>
+          </div>
+        </div>
+
+        <!-- Step 03 -->
+        <div class="timeline-step reveal">
+          <div class="step-node">03</div>
+          <div class="step-body glass-panel">
+            <div class="mono-badge" style="color: var(--accent-cyan); margin-bottom: 0.5rem;">PHASE 03 // CONTINUOUS</div>
+            <h3>Systemic Optimization & Homeostasis</h3>
+            <p>Deployment of sub-dermal bio-quantum quantum sensor telemetry. Continuous micro-dosing of autologous regenerative peptides to lock in youthful cellular state for decades.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Minimalist Editorial Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <div class="brand-logo" style="margin-bottom: 1rem;">
+            <div class="brand-mark"></div>
+            <span class="brand-name">APOLLO</span>
+          </div>
+          <p>APOLLO Bio-Technologies Inc. Advancing humanity beyond biological thresholds through epigenetic engineering.</p>
+        </div>
+
+        <div class="footer-col">
+          <div class="mono-badge" style="color: var(--accent-ice); margin-bottom: 1rem;">CLINICAL LABS</div>
+          <ul class="footer-links">
+            <li><a href="#">Zurich Epigenetics Hub</a></li>
+            <li><a href="#">Tokyo Rejuvenation Facility</a></li>
+            <li><a href="#">Palo Alto Transgenics</a></li>
+            <li><a href="#">Reykjavik Genomic Bank</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <div class="mono-badge" style="color: var(--accent-ice); margin-bottom: 1rem;">RESEARCH</div>
+          <ul class="footer-links">
+            <li><a href="#">Yamanaka Vector Delivery</a></li>
+            <li><a href="#">Telomere Catalytic Papers</a></li>
+            <li><a href="#">Mitochondrial Mitophagy</a></li>
+            <li><a href="#">Clinical Trial Phase IV</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <div class="mono-badge" style="color: var(--accent-ice); margin-bottom: 1rem;">SYSTEM TIME</div>
+          <div style="font-family: var(--font-mono); font-size: 1.1rem; color: var(--accent-cyan);" id="utc-clock">00:00:00 UTC</div>
+          <div class="mono-badge" style="color: var(--text-muted); margin-top: 0.5rem;">LAT: 47.3769° N // LONG: 8.5417° E</div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 APOLLO HUMAN LABS. ALL RIGHTS RESERVED.</div>
+        <div>CONFIDENTIAL PROTOCOL // FOR AUTHORIZED PARTICIPANTS ONLY</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Embedded Vanilla JS Scripts -->
+  <script>
+    /* ==========================================================================
+       1. INTERACTIVE CANVAS BACKGROUND (Cellular Particles & DNA Dust Network)
+       ========================================================================== */
+    const canvas = document.getElementById('hero-canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let particles = [];
+    const particleCount = 60;
+    let mouse = { x: null, y: null, radius: 180 };
+
+    function initCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      createParticles();
+    }
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.radius = Math.random() * 2 + 1;
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.vy = (Math.random() - 0.5) * 0.4;
+        this.color = Math.random() > 0.4 ? 'rgba(14, 165, 233, ' : 'rgba(224, 242, 254, ';
+        this.alpha = Math.random() * 0.5 + 0.2;
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color + this.alpha + ')';
+        ctx.fill();
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0 || this.x > width) this.vx *= -1;
+        if (this.y < 0 || this.y > height) this.vy *= -1;
+
+        // Interactive mouse repulsion
+        if (mouse.x !== null && mouse.y !== null) {
+          let dx = mouse.x - this.x;
+          let dy = mouse.y - this.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < mouse.radius) {
+            let angle = Math.atan2(dy, dx);
+            let force = (mouse.radius - dist) / mouse.radius;
+            this.x -= Math.cos(angle) * force * 3;
+            this.y -= Math.sin(angle) * force * 3;
+          }
+        }
+      }
+    }
+
+    function createParticles() {
+      particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function connectParticles() {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          let dx = particles[i].x - particles[j].x;
+          let dy = particles[i].y - particles[j].y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 140) {
+            let opacity = 1 - (dist / 140);
+            ctx.strokeStyle = `rgba(14, 165, 233, ${opacity * 0.15})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach(p => {
+        p.update();
+        p.draw();
+      });
+      connectParticles();
+      requestAnimationFrame(animateParticles);
+    }
+
+    window.addEventListener('resize', initCanvas);
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    initCanvas();
+    animateParticles();
+
+    /* ==========================================================================
+       2. BENTO CARDS 3D HOVER TILT & CURSOR SPOTLIGHT
+       ========================================================================== */
+    const bentoCards = document.querySelectorAll('.bento-card');
+
+    bentoCards.forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        const rotateX = (y - centerY) / 20;
+        const rotateY = (centerX - x) / 20;
+
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+      });
+
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0px)`;
+      });
+    });
+
+    /* ==========================================================================
+       3. BIOMETRIC OPTIMIZER SIMULATOR CALCULATOR
+       ========================================================================== */
+    const ageSlider = document.getElementById('age-slider');
+    const intensitySlider = document.getElementById('intensity-slider');
+    const cyclesSlider = document.getElementById('cycles-slider');
+
+    const ageVal = document.getElementById('age-val');
+    const intensityVal = document.getElementById('intensity-val');
+    const cyclesVal = document.getElementById('cycles-val');
+
+    const deltaDisplay = document.getElementById('delta-display');
+    const projectedAgeDisplay = document.getElementById('projected-age');
+    const lifespanDisplay = document.getElementById('lifespan-val');
+    const telomereDisplay = document.getElementById('telomere-val');
+    const gaugeFill = document.getElementById('gauge-fill');
+
+    function calculateBiometrics() {
+      const age = parseInt(ageSlider.value);
+      const intensity = parseInt(intensitySlider.value);
+      const cycles = parseInt(cyclesSlider.value);
+
+      // Update Slider Label Displays
+      ageVal.textContent = `${age} Yrs`;
+      intensityVal.textContent = `${intensity}%`;
+      cyclesVal.textContent = `${cycles} ${cycles === 1 ? 'Cycle' : 'Cycles'}`;
+
+      // Calculate Reversal Delta (Formula)
+      const baseReversal = (intensity / 100) * 8.5;
+      const cycleMultiplier = 1 + (cycles - 1) * 0.4;
+      const totalReversalYears = Math.min(age * 0.45, (baseReversal * cycleMultiplier)).toFixed(1);
+
+      const targetBioAge = (age - totalReversalYears).toFixed(1);
+      const projectedLifespan = Math.min(160, Math.round(92 + (totalReversalYears * 2.6)));
+      const telomereIntegrity = Math.min(99.9, (82 + (intensity * 0.16))).toFixed(1);
+
+      // DOM Updates
+      deltaDisplay.textContent = `-${totalReversalYears} Years Reversal`;
+      projectedAgeDisplay.textContent = targetBioAge;
+      lifespanDisplay.textContent = `${projectedLifespan} Yrs`;
+      telomereDisplay.textContent = `${telomereIntegrity}%`;
+
+      // Update Radial SVG Dashoffset (Full circumference = 565.48)
+      const circumference = 565.48;
+      const progressPercent = Math.min(1, targetBioAge / 80);
+      const offset = circumference * (1 - progressPercent * 0.7);
+      gaugeFill.style.strokeDashoffset = offset;
+    }
+
+    [ageSlider, intensitySlider, cyclesSlider].forEach(input => {
+      input.addEventListener('input', calculateBiometrics);
+    });
+
+    // Initialize initial values
+    calculateBiometrics();
+
+    /* ==========================================================================
+       4. LIVE UTC CLOCK
+       ========================================================================== */
+    function updateUTCClock() {
+      const clockElement = document.getElementById('utc-clock');
+      const now = new Date();
+      const hours = String(now.getUTCHours()).padStart(2, '0');
+      const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(now.getUTCSeconds()).padStart(2, '0');
+      clockElement.textContent = `${hours}:${minutes}:${seconds} UTC`;
+    }
+    setInterval(updateUTCClock, 1000);
+    updateUTCClock();
+
+    /* ==========================================================================
+       5. INTERSECTION OBSERVER SCROLL REVEAL ANIMATION
+       ========================================================================== */
+    const revealElements = document.querySelectorAll('.reveal');
+
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -40px 0px'
+    });
+
+    revealElements.forEach(el => revealObserver.observe(el));
+  </script>
+</body>
+</html>

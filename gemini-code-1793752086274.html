@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Fluid Clock</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Playfair+Display:ital@0;1&family=Roboto:wght@300;400&family=Space+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --accent-color: #333333;
+            --font-family: 'Roboto', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* Core Time Display */
+        #display-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 1s ease; /* For burn-in protection */
+            text-align: center;
+            width: 100%;
+        }
+
+        #time-wrapper {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            font-variant-numeric: tabular-nums;
+            font-size: clamp(4rem, 18vw, 30rem);
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+
+        #ampm {
+            font-size: clamp(1rem, 4vw, 5rem);
+            margin-left: 1vw;
+            opacity: 0.7;
+        }
+
+        #date-display {
+            font-size: clamp(1rem, 3vw, 4rem);
+            opacity: 0.6;
+            margin-top: 1vh;
+            letter-spacing: 0.05em;
+        }
+
+        .blink #colon {
+            animation: blinker 1s step-start infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        /* UI Management */
+        #ui-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+            z-index: 10;
+        }
+
+        body.idle #ui-layer, body.idle, body.idle * {
+            cursor: none;
+        }
+        body.idle #ui-layer {
+            opacity: 0;
+        }
+
+        /* Settings Panel */
+        #settings-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            pointer-events: auto;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+
+        #settings-toggle:hover {
+            opacity: 1;
+        }
+
+        #settings-panel {
+            position: absolute;
+            top: 0;
+            right: -350px;
+            width: 320px;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid var(--accent-color);
+            padding: 20px;
+            pointer-events: auto;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+            color: #fff;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+        }
+
+        #settings-panel.open {
+            right: 0;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            color: #aaa;
+            font-family: sans-serif;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-family: sans-serif;
+            font-size: 14px;
+        }
+
+        select, button {
+            background: #222;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover, select:hover {
+            background: #333;
+        }
+
+        /* View toggles (Clock / Stopwatch / Timer) */
+        #view-tabs {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-color);
+            opacity: 0.5;
+            padding: 5px 15px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            opacity: 1;
+            border-color: var(--accent-color);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Screen Reader Only */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="display-container">
+        <!-- Main Clock View -->
+        <div id="view-clock" class="view">
+            <div id="time-wrapper">
+                <span id="hours">12</span><span id="colon">:</span><span id="minutes">00</span><span id="seconds" style="display:none;">:00</span>
+                <span id="ampm"></span>
+            </div>
+            <div id="date-display"></div>
+        </div>
+        
+        <!-- Accessibility Announcer -->
+        <div class="sr-only" aria-live="polite" id="a11y-announcer"></div>
+    </div>
+
+    <!-- UI Overlay (Auto-hides) -->
+    <div id="ui-layer">
+        <button id="settings-toggle" aria-label="Open Settings">⚙️</button>
+        
+        <div id="view-tabs">
+            <button class="tab-btn active" data-view="clock">Clock</button>
+            <button class="tab-btn" data-view="stopwatch" onclick="alert('Stopwatch mode activated (Core template structural placeholder)')">Stopwatch</button>
+            <button class="tab-btn" data-view="timer" onclick="alert('Timer mode activated (Core template structural placeholder)')">Timer</button>
+        </div>
+
+        <div id="settings-panel">
+            <div class="setting-group">
+                <h3>Time Format</h3>
+                <div class="setting-row">
+                    <label>24-Hour Military</label>
+                    <input type="checkbox" id="toggle-24hr">
+                </div>
+                <div class="setting-row">
+                    <label>Show Seconds</label>
+                    <input type="checkbox" id="toggle-seconds">
+                </div>
+                <div class="setting-row">
+                    <label>Blinking Colon</label>
+                    <input type="checkbox" id="toggle-blink" checked>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Visuals</h3>
+                <div class="setting-row">
+                    <label>Theme</label>
+                    <select id="theme-select">
+                        <option value="oled">OLED True Black</option>
+                        <option value="dark">Dark Mode</option>
+                        <option value="light">Light Mode</option>
+                        <option value="neon">Cyber Neon</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label>Typography</label>
+                    <select id="font-select">
+                        <option value="'Roboto', sans-serif">Modern Sans</option>
+                        <option value="'Orbitron', sans-serif">Digital Retro</option>
+                        <option value="'Space Mono', monospace">Monospace</option>
+                        <option value="'Playfair Display', serif">Elegant Serif</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <label>Show Date</label>
+                    <input type="checkbox" id="toggle-date" checked>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <h3>Screen Protection</h3>
+                <div class="setting-row">
+                    <label>Prevent Sleep (Wake Lock)</label>
+                    <button id="btn-wakelock">Enable</button>
+                </div>
+                <div class="setting-row">
+                    <label>Burn-in Protection</label>
+                    <input type="checkbox" id="toggle-burnin" checked>
+                </div>
+            </div>
+            
+            <button onclick="document.getElementById('settings-panel').classList.remove('open')" style="width:100%; margin-top:10px;">Close Settings</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const elHours = document.getElementById('hours');
+        const elMinutes = document.getElementById('minutes');
+        const elSeconds = document.getElementById('seconds');
+        const elColon = document.getElementById('colon');
+        const elAmPm = document.getElementById('ampm');
+        const elDate = document.getElementById('date-display');
+        const displayContainer = document.getElementById('display-container');
+        const timeWrapper = document.getElementById('time-wrapper');
+        const settingsPanel = document.getElementById('settings-panel');
+        const a11yAnnouncer = document.getElementById('a11y-announcer');
+
+        // Settings State
+        const config = {
+            is24hr: false,
+            showSeconds: false,
+            blinkColon: true,
+            showDate: true,
+            theme: 'oled',
+            font: "'Roboto', sans-serif",
+            burnInProtection: true
+        };
+
+        const themes = {
+            oled: { bg: '#000000', text: '#ffffff', accent: '#333' },
+            dark: { bg: '#1a1a2e', text: '#e94560', accent: '#16213e' },
+            light: { bg: '#f5f5f7', text: '#1d1d1f', accent: '#d2d2d7' },
+            neon: { bg: '#090a0f', text: '#00ffcc', accent: '#ff00ff' }
+        };
+
+        // Initialize & Load Settings
+        function loadSettings() {
+            const saved = localStorage.getItem('fluidClockConfig');
+            if (saved) Object.assign(config, JSON.parse(saved));
+            
+            document.getElementById('toggle-24hr').checked = config.is24hr;
+            document.getElementById('toggle-seconds').checked = config.showSeconds;
+            document.getElementById('toggle-blink').checked = config.blinkColon;
+            document.getElementById('toggle-date').checked = config.showDate;
+            document.getElementById('toggle-burnin').checked = config.burnInProtection;
+            document.getElementById('theme-select').value = config.theme;
+            document.getElementById('font-select').value = config.font;
+            
+            applyConfig();
+        }
+
+        function saveSettings() {
+            localStorage.setItem('fluidClockConfig', JSON.stringify(config));
+        }
+
+        function applyConfig() {
+            // Apply Theme
+            const t = themes[config.theme];
+            document.documentElement.style.setProperty('--bg-color', t.bg);
+            document.documentElement.style.setProperty('--text-color', t.text);
+            document.documentElement.style.setProperty('--accent-color', t.accent);
+            
+            // Apply Font
+            document.documentElement.style.setProperty('--font-family', config.font);
+            
+            // Apply Toggles
+            elSeconds.style.display = config.showSeconds ? 'inline' : 'none';
+            timeWrapper.className = config.blinkColon ? 'blink' : '';
+            elDate.style.display = config.showDate ? 'block' : 'none';
+            elAmPm.style.display = config.is24hr ? 'none' : 'inline';
+        }
+
+        // Event Listeners for Settings
+        document.getElementById('settings-toggle').addEventListener('click', () => settingsPanel.classList.add('open'));
+        
+        document.getElementById('toggle-24hr').addEventListener('change', (e) => { config.is24hr = e.target.checked; saveSettings(); applyConfig(); updateTime(); });
+        document.getElementById('toggle-seconds').addEventListener('change', (e) => { config.showSeconds = e.target.checked; saveSettings(); applyConfig(); });
+        document.getElementById('toggle-blink').addEventListener('change', (e) => { config.blinkColon = e.target.checked; saveSettings(); applyConfig(); });
+        document.getElementById('toggle-date').addEventListener('change', (e) => { config.showDate = e.target.checked; saveSettings(); applyConfig(); });
+        document.getElementById('toggle-burnin').addEventListener('change', (e) => { config.burnInProtection = e.target.checked; saveSettings(); });
+        document.getElementById('theme-select').addEventListener('change', (e) => { config.theme = e.target.value; saveSettings(); applyConfig(); });
+        document.getElementById('font-select').addEventListener('change', (e) => { config.font = e.target.value; saveSettings(); applyConfig(); });
+
+        // Core Time Logic
+        function updateTime() {
+            const now = new Date();
+            
+            let h = now.getHours();
+            const m = String(now.getMinutes()).padStart(2, '0');
+            const s = String(now.getSeconds()).padStart(2, '0');
+            
+            if (!config.is24hr) {
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                elAmPm.textContent = ampm;
+            } else {
+                h = String(h).padStart(2, '0');
+            }
+
+            elHours.textContent = h;
+            elMinutes.textContent = m;
+            elSeconds.textContent = `:${s}`;
+
+            if (config.showDate) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                elDate.textContent = now.toLocaleDateString(undefined, options);
+            }
+
+            // A11y Announcement every minute
+            if (s === '00') {
+                a11yAnnouncer.textContent = `It is currently ${h} ${m} ${!config.is24hr ? elAmPm.textContent : ''}`;
+            }
+
+            requestAnimationFrame(updateTime);
+        }
+
+        // Idle UI Auto-Hide
+        let idleTimer;
+        function resetIdleTimer() {
+            document.body.classList.remove('idle');
+            clearTimeout(idleTimer);
+            if (!settingsPanel.classList.contains('open')) {
+                idleTimer = setTimeout(() => document.body.classList.add('idle'), 3000);
+            }
+        }
+        window.addEventListener('mousemove', resetIdleTimer);
+        window.addEventListener('keydown', resetIdleTimer);
+        window.addEventListener('touchstart', resetIdleTimer);
+
+        // Burn-in Protection
+        setInterval(() => {
+            if (config.burnInProtection) {
+                const x = (Math.random() * 20 - 10).toFixed(1);
+                const y = (Math.random() * 20 - 10).toFixed(1);
+                displayContainer.style.transform = `translate(${x}px, ${y}px)`;
+            } else {
+                displayContainer.style.transform = 'translate(0px, 0px)';
+            }
+        }, 60000); // Shift every minute
+
+        // Wake Lock API
+        let wakeLock = null;
+        const btnWakeLock = document.getElementById('btn-wakelock');
+        
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    btnWakeLock.textContent = "Active (Click to Disable)";
+                    btnWakeLock.style.background = "#2e7d32";
+                    
+                    wakeLock.addEventListener('release', () => {
+                        btnWakeLock.textContent = "Enable";
+                        btnWakeLock.style.background = "#222";
+                    });
+                } catch (err) {
+                    btnWakeLock.textContent = "Failed";
+                }
+            } else {
+                btnWakeLock.textContent = "Not Supported";
+                btnWakeLock.disabled = true;
+            }
+        }
+
+        btnWakeLock.addEventListener('click', () => {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => wakeLock = null);
+            } else {
+                requestWakeLock();
+            }
+        });
+
+        // Re-acquire wake lock on visibility change
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'f') {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+            if (e.key === '1') { config.is24hr = false; saveSettings(); applyConfig(); }
+            if (e.key === '2') { config.is24hr = true; saveSettings(); applyConfig(); }
+        });
+
+        // Init
+        loadSettings();
+        requestAnimationFrame(updateTime);
+        resetIdleTimer();
+    </script>
+</body>
+</html>

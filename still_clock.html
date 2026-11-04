@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<meta name="description" content="A beautiful, responsive fullscreen clock with timers and focus tools.">
+<title>Still — Minimal Clock</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap');
+:root{color-scheme:dark;--bg:#08090d;--panel:rgba(22,24,32,.86);--panel2:#171923;--text:#f4f5f7;--muted:#8d92a1;--accent:#b7f397;--line:rgba(255,255,255,.1);--clock-font:'DM Sans',sans-serif;--glow:0 0 48px color-mix(in srgb,var(--accent) 18%,transparent)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);transition:background .5s,color .3s;user-select:none}
+body.light{color-scheme:light;--bg:#f2f3f5;--panel:rgba(255,255,255,.88);--panel2:#fff;--text:#171923;--muted:#707583;--line:rgba(0,0,0,.1)}
+body.oled{--bg:#000;--panel:rgba(12,12,12,.94);--panel2:#080808}
+body.high-contrast{--text:#fff;--muted:#d2d2d2;--accent:#ffff00;--line:rgba(255,255,255,.5)}
+body.preset-neon{--accent:#8b8cff}body.preset-pastel{--accent:#f3a9c8}body.preset-amber{--accent:#ffc36b}body.preset-ice{--accent:#7de0ed}body.preset-mono{--accent:#e5e7eb}
+#backdrop{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 50% 45%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 55%),var(--bg);transition:background .6s}
+#particles{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;opacity:.35}
+.ambient{background:linear-gradient(135deg,#101b28,#20213a 50%,#08090d)!important}
+#app{position:relative;z-index:1;height:100%;width:100%;display:flex;flex-direction:column;padding:max(22px,env(safe-area-inset-top)) max(26px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(26px,env(safe-area-inset-left));transition:opacity .5s}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px}
+.brand{font-size:13px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:9px}.brand-mark{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 15px var(--accent)}
+.top-actions{display:flex;gap:8px}.icon-btn,.chip,.tool-tab{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:999px;padding:10px 13px;cursor:pointer;font:inherit;font-size:12px;backdrop-filter:blur(16px);transition:.2s}.icon-btn{width:40px;height:40px;padding:0;display:grid;place-items:center;font-size:16px}.icon-btn:hover,.chip:hover,.tool-tab:hover{border-color:var(--accent);transform:translateY(-1px)}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;text-align:center;position:relative}
+.clock-wrap{width:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;transform:translate(var(--drift-x,0px),var(--drift-y,0px));transition:transform 1.5s ease}
+.clock{font-family:var(--clock-font);font-size:clamp(4rem,17vw, min(26vw,18rem));font-weight:500;letter-spacing:-.075em;line-height:.95;font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:var(--glow);max-width:100%}
+.clock.digital{font-family:'DM Mono',monospace;letter-spacing:-.09em;font-weight:400}.clock.serif{font-family:'Playfair Display',serif;font-weight:500;letter-spacing:-.06em}.clock.mono{font-family:'DM Mono',monospace;font-weight:400;letter-spacing:-.07em}
+.colon{display:inline-block;color:var(--accent);transition:opacity .15s}.colon.off{opacity:.16}
+.ampm{font-family:'DM Sans',sans-serif;font-size:clamp(12px,2vw,22px);letter-spacing:.16em;color:var(--muted);margin-left:clamp(10px,2vw,25px);vertical-align:middle}
+.date-line{margin-top:clamp(22px,4vh,42px);font-size:clamp(13px,1.7vw,18px);letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.timezone-label{margin-top:10px;color:var(--muted);font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+.status-line{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:22px;color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase}.status-dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.bottom-bar{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;min-height:42px}
+.panel{position:fixed;z-index:10;right:18px;top:70px;bottom:18px;width:min(390px,calc(100vw - 36px));overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;backdrop-filter:blur(28px);box-shadow:0 24px 80px #0005;transform:translateX(calc(100% + 30px));transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.panel.open{transform:translateX(0)}.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.panel h2{font-size:16px;margin:0}.panel h3{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:23px 0 11px}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:42px;font-size:13px}.setting small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+select,input[type=text],input[type=number],input[type=time]{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 10px;font:inherit;font-size:12px;max-width:175px}
+input[type=checkbox]{accent-color:var(--accent);width:17px;height:17px}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}.swatch{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer}.swatch.active{outline:2px solid var(--text);outline-offset:3px}
+.toggle-row{display:flex;gap:7px;flex-wrap:wrap}.toggle-row button.active,.tool-tab.active{background:var(--accent);color:#111;border-color:var(--accent)}
+.tools{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:18px}.tools.active{display:flex}.tool-tabs{display:flex;gap:7px;flex-wrap:wrap;justify-content:center}.tool-tab{padding:9px 15px}.tool-readout{font:clamp(3.5rem,13vw,9rem) 'DM Mono',monospace;letter-spacing:-.08em;font-variant-numeric:tabular-nums}.tool-sub{color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}.tool-controls{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}.action{background:var(--accent);color:#10120e;border:0;border-radius:999px;padding:12px 21px;font-weight:700;cursor:pointer}.action.secondary{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.timer-inputs{display:flex;gap:8px;align-items:center}.timer-inputs input{width:74px;text-align:center;font-size:18px}.alarm-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.weather{position:fixed;left:24px;bottom:24px;color:var(--muted);font-size:12px;display:none;align-items:center;gap:8px}.weather.show{display:flex}.weather strong{color:var(--text);font-size:16px}
+.toast{position:fixed;z-index:20;bottom:24px;left:50%;transform:translate(-50%,20px);opacity:0;background:var(--panel2);border:1px solid var(--line);padding:10px 15px;border-radius:99px;font-size:12px;transition:.25s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
+.hidden-ui .topbar,.hidden-ui .bottom-bar,.hidden-ui .weather{opacity:0;pointer-events:none;transition:opacity .5s}.hidden-ui{cursor:none}
+.overlay{position:fixed;inset:0;background:#0008;z-index:9;display:none}.overlay.show{display:block}
+@media(max-width:600px){#app{padding:16px 15px max(18px,env(safe-area-inset-bottom))}.brand{font-size:11px}.clock{font-size:clamp(3.2rem,18vw,7rem);letter-spacing:-.08em}.panel{top:62px;right:10px;bottom:10px;width:calc(100vw - 20px)}.weather{left:16px;bottom:15px}.bottom-bar{padding-bottom:5px}}
+@media(orientation:landscape) and (max-height:500px){#app{padding:10px 22px}.clock{font-size:min(24vh,14vw)}.date-line{margin-top:12px}.status-line{margin-top:10px}.bottom-bar{min-height:30px}.topbar{min-height:30px}.icon-btn{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div id="backdrop"></div><canvas id="particles"></canvas>
+<div id="app">
+<header class="topbar">
+  <div class="brand"><span class="brand-mark"></span> STILL <span style="font-weight:400;letter-spacing:.08em">/ YOUR TIME, YOUR SPACE</span></div>
+  <div class="top-actions">
+    <button class="icon-btn" id="wakeBtn" title="Keep screen awake" aria-label="Toggle screen wake lock">◉</button>
+    <button class="icon-btn" id="fullBtn" title="Fullscreen (F)" aria-label="Toggle fullscreen">⛶</button>
+    <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Open settings">☷</button>
+  </div>
+</header>
+<main>
+  <section class="clock-wrap" id="clockView" aria-label="Clock">
+    <div class="clock" id="clock" role="timer" aria-live="off"><span id="hours">05</span><span class="colon">:</span><span id="minutes">54</span><span id="secondsGroup"><span class="colon">:</span><span id="seconds">00</span></span><span class="ampm" id="ampm">AM</span></div>
+    <div class="date-line" id="dateLine">WEDNESDAY · NOVEMBER 4, 2026</div>
+    <div class="timezone-label" id="tzLabel">LOCAL TIME · ASIA/KOLKATA</div>
+    <div class="status-line"><span class="status-dot"></span><span id="statusText">A LITTLE MORE PRESENT</span></div>
+  </section>
+  <section class="tools" id="toolsView">
+    <div class="tool-tabs">
+      <button class="tool-tab active" data-tool="stopwatch">Stopwatch</button><button class="tool-tab" data-tool="countdown">Countdown</button><button class="tool-tab" data-tool="pomodoro">Pomodoro</button><button class="tool-tab" data-tool="alarm">Alarm</button>
+    </div>
+    <div class="tool-sub" id="toolSub">STOPWATCH</div>
+    <div class="tool-readout" id="toolReadout">00:00.00</div>
+    <div class="timer-inputs" id="timerInputs" hidden><input type="number" id="timerHours" min="0" max="99" value="0" aria-label="Hours"><span>:</span><input type="number" id="timerMinutes" min="0" max="59" value="5" aria-label="Minutes"><span>:</span><input type="number" id="timerSeconds" min="0" max="59" value="0" aria-label="Seconds"></div>
+    <div class="tool-sub" id="pomLabel"></div>
+    <div class="alarm-row" id="alarmInputs" hidden><input type="time" id="alarmTime" aria-label="Alarm time"><label style="font-size:12px"><input type="checkbox" id="alarmEnabled"> Enable alarm</label></div>
+    <div class="tool-controls"><button class="action" id="startTool">Start</button><button class="action secondary" id="resetTool">Reset</button><button class="action secondary" id="lapTool" hidden>Lap</button></div>
+    <div id="laps" style="max-height:18vh;overflow:auto;color:var(--muted);font:12px 'DM Mono';line-height:2"></div>
+  </section>
+</main>
+<footer class="bottom-bar">
+  <button class="chip" id="toggleTools">TOOLS</button><button class="chip" id="quickFormat">12 / 24H</button><button class="chip" id="quickSeconds">SECONDS ON</button><button class="chip" id="quickZen">ZEN MODE</button>
+</footer>
+<div class="weather" id="weather"><span id="weatherIcon">☀</span><strong id="weatherTemp">--°</strong><span id="weatherPlace">Local weather</span></div>
+</div>
+<div class="overlay" id="overlay"></div>
+<aside class="panel" id="panel" aria-label="Clock settings">
+ <div class="panel-head"><h2>Customize your clock</h2><button class="icon-btn" id="closeSettings" aria-label="Close settings">×</button></div>
+ <h3>Time & date</h3>
+ <div class="setting"><span>Time format</span><select id="format"><option value="12">12-hour</option><option value="24">24-hour</option></select></div>
+ <div class="setting"><span>Show seconds</span><input type="checkbox" id="showSeconds" checked></div>
+ <div class="setting"><span>Show milliseconds</span><input type="checkbox" id="showMillis"></div>
+ <div class="setting"><span>Blink separator</span><input type="checkbox" id="blink" checked></div>
+ <div class="setting"><span>Timezone</span><select id="timezone"><option value="local">System local</option><option value="UTC">UTC</option><option value="America/New_York">New York</option><option value="America/Los_Angeles">Los Angeles</option><option value="Europe/London">London</option><option value="Europe/Paris">Paris</option><option value="Asia/Kolkata">India · Kolkata</option><option value="Asia/Tokyo">Tokyo</option><option value="Asia/Singapore">Singapore</option><option value="Australia/Sydney">Sydney</option></select></div>
+ <div class="setting"><span>Show weekday</span><input type="checkbox" id="showDay" checked></div>
+ <div class="setting"><span>Show date</span><input type="checkbox" id="showDate" checked></div>
+ <div class="setting"><span>Show year</span><input type="checkbox" id="showYear" checked></div>
+ <h3>Appearance</h3>
+ <div class="setting"><span>Theme</span><select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="oled">OLED true black</option></select></div>
+ <div class="setting"><span>Color preset</span></div><div class="swatches" id="swatches"><button class="swatch active" data-preset="mint" style="background:#b7f397" aria-label="Mint"></button><button class="swatch" data-preset="neon" style="background:#8b8cff" aria-label="Neon"></button><button class="swatch" data-preset="pastel" style="background:#f3a9c8" aria-label="Pastel"></button><button class="swatch" data-preset="amber" style="background:#ffc36b" aria-label="Amber"></button><button class="swatch" data-preset="ice" style="background:#7de0ed" aria-label="Ice"></button><button class="swatch" data-preset="mono" style="background:#e5e7eb" aria-label="Monochrome"></button></div>
+ <div class="setting"><span>Typography</span><select id="font"><option value="sans">Modern sans</option><option value="digital">Digital</option><option value="mono">Monospace</option><option value="serif">Elegant serif</option></select></div>
+ <div class="setting"><span>Background</span><select id="background"><option value="ambient">Ambient glow</option><option value="solid">Solid</option><option value="particles">Particles</option></select></div>
+ <div class="setting"><span>Auto-dim at night</span><input type="checkbox" id="autoDim"></div>
+ <div class="setting"><span>High contrast</span><input type="checkbox" id="contrast"></div>
+ <h3>Display behavior</h3>
+ <div class="setting"><span>Auto-hide controls (3 sec)</span><input type="checkbox" id="autoHide"></div>
+ <div class="setting"><span>Burn-in protection / pixel shift</span><input type="checkbox" id="burnIn"></div>
+ <div class="setting"><span>Show weather (online)</span><input type="checkbox" id="showWeather"></div>
+ <div class="setting"><span>Weather location</span><input type="text" id="weatherCity" placeholder="e.g. Bengaluru"></div>
+ <div class="setting"><span>High precision display</span><small>Milliseconds update when enabled</small></div>
+ <div style="display:flex;justify-content:space-between;gap:8px;margin-top:22px"><button class="chip" id="resetSettings">Reset defaults</button><button class="chip" id="exportSettings">Export settings</button></div>
+ <p style="font-size:10px;line-height:1.6;color:var(--muted);margin-top:18px">Your preferences are stored on this device. Weather requires an internet connection. Wake lock and fullscreen depend on browser support and user permission.</p>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+const defaults={format:'12',showSeconds:true,showMillis:false,blink:true,timezone:'local',showDay:true,showDate:true,showYear:true,theme:'dark',preset:'mint',font:'sans',background:'ambient',autoDim:false,contrast:false,autoHide:false,burnIn:false,showWeather:false,weatherCity:'Bengaluru'};
+let cfg={...defaults,...safeParse(localStorage.getItem('still-config'))};
+function safeParse(s){try{return JSON.parse(s)||{}}catch{return {}}}
+function save(){localStorage.setItem('still-config',JSON.stringify(cfg))}
+const ids=Object.keys(defaults);ids.forEach(k=>{let el=$(k);if(el){if(el.type==='checkbox')el.checked=!!cfg[k];else el.value=cfg[k]}});
+function apply(){
+ document.body.classList.toggle('light',cfg.theme==='light');document.body.classList.toggle('oled',cfg.theme==='oled');document.body.classList.toggle('high-contrast',cfg.contrast);
+ ['neon','pastel','amber','ice','mono'].forEach(p=>document.body.classList.toggle('preset-'+p,cfg.preset===p));
+ $('backdrop').classList.toggle('ambient',cfg.background==='ambient');
+ $('particles').style.opacity=cfg.background==='particles'?'.55':'0';
+ $('clock').className='clock '+({digital:'digital',mono:'mono',serif:'serif'}[cfg.font]||'');
+ $('secondsGroup').style.display=cfg.showSeconds?'':'none';$('ampm').style.display=cfg.format==='12'?'':'none';
+ $('swatches').querySelectorAll('.swatch').forEach(b=>b.classList.toggle('active',b.dataset.preset===cfg.preset));
+ $('weather').classList.toggle('show',cfg.showWeather&&!!weatherData);
+ if(cfg.autoDim){let h=new Date().getHours();document.body.style.filter=(h>=22||h<6)?'brightness(.68)':''}else document.body.style.filter='';
+ save();updateClock();
+}
+ids.forEach(k=>{let el=$(k);if(el)el.addEventListener('change',()=>{cfg[k]=el.type==='checkbox'?el.checked:el.value;apply();if(k==='showWeather'&&cfg.showWeather)loadWeather()})});
+$('swatches').addEventListener('click',e=>{let b=e.target.closest('[data-preset]');if(!b)return;cfg.preset=b.dataset.preset;apply()});
+function dateParts(d,tz){let opts={timeZone:tz==='local'?undefined:tz};return new Intl.DateTimeFormat('en-US',{...opts,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(d)}
+function updateClock(){
+ const now=new Date(),tz=cfg.timezone;let p=dateParts(now,tz),v=Object.fromEntries(p.map(x=>[x.type,x.value]));
+ let h=+v.hour;if(cfg.format==='12')h=(h%12)||12;
+ $('hours').textContent=String(h).padStart(2,'0');$('minutes').textContent=v.minute;$('seconds').textContent=v.second;
+ $('ampm').textContent=(+v.hour>=12?'PM':'AM');
+ document.querySelectorAll('.colon').forEach(c=>c.classList.toggle('off',cfg.blink&&now.getMilliseconds()<500));
+ let dateOpts={timeZone:tz==='local'?undefined:tz};let parts=new Intl.DateTimeFormat('en-US',{...dateOpts,weekday:'long',month:'long',day:'numeric',year:'numeric'}).formatToParts(now),o=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+ let line=[];if(cfg.showDay)line.push(o.weekday);if(cfg.showDate)line.push(o.month+' '+o.day);if(cfg.showYear)line.push(o.year);
+ $('dateLine').textContent=line.join(' · ');$('dateLine').style.display=line.length?'':'none';
+ $('tzLabel').textContent=(tz==='local'?'LOCAL TIME':tz.replaceAll('_',' '))+' · '+(tz==='local'?(Intl.DateTimeFormat().resolvedOptions().timeZone||'SYSTEM'):tz);
+ if(cfg.showMillis){$('seconds').textContent=v.second+'.'+String(now.getMilliseconds()).padStart(3,'0');$('secondsGroup').style.display=''}
+ if(cfg.autoDim){let hr=now.getHours();document.body.style.filter=(hr>=22||hr<6)?'brightness(.68)':''}
+}
+setInterval(updateClock, cfg.showMillis?40:100);updateClock();apply();
+$('settingsBtn').onclick=()=>panel(true);$('closeSettings').onclick=()=>panel(false);$('overlay').onclick=()=>panel(false);
+function panel(open){$('panel').classList.toggle('open',open);$('overlay').classList.toggle('show',open)}
+$('fullBtn').onclick=toggleFullscreen;function toggleFullscreen(){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.().catch(()=>toast('Fullscreen unavailable'));else document.exitFullscreen?.()}
+$('quickFormat').onclick=()=>{cfg.format=cfg.format==='12'?'24':'12';$('format').value=cfg.format;apply()};
+$('quickSeconds').onclick=()=>{cfg.showSeconds=!cfg.showSeconds;$('showSeconds').checked=cfg.showSeconds;apply()};
+$('quickZen').onclick=()=>document.body.classList.toggle('zen');
+$('toggleTools').onclick=()=>{let on=$('toolsView').classList.toggle('active');$('clockView').style.visibility=on?'hidden':'';$('toggleTools').textContent=on?'CLOCK':'TOOLS'};
+$('wakeBtn').onclick=async()=>{try{if(wakeLock){await wakeLock.release();wakeLock=null;$('wakeBtn').style.color=''}else{wakeLock=await navigator.wakeLock.request('screen');$('wakeBtn').style.color='var(--accent)';wakeLock.addEventListener('release',()=>{$('wakeBtn').style.color=''})}}catch(e){toast('Wake lock not available here')}};
+let wakeLock=null;document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&wakeLock===null&&wakeWanted){try{wakeLock=await navigator.wakeLock.request('screen')}catch{}}});let wakeWanted=false;
+$('wakeBtn').addEventListener('click',()=>{wakeWanted=!!wakeLock});
+document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;if(e.key==='f'||e.key==='F')toggleFullscreen();if(e.key==='1'){cfg.format='12';$('format').value='12';apply()}if(e.key==='2'){cfg.format='24';$('format').value='24';apply()}if(e.code==='Space'&&$('toolsView').classList.contains('active')){e.preventDefault();toggleRun()}if(e.key==='Escape')panel(false);if(e.key==='s'||e.key==='S')$('quickSeconds').click()});
+let hideTimer;function activity(){document.body.classList.remove('hidden-ui');clearTimeout(hideTimer);if(cfg.autoHide&&!$('panel').classList.contains('open'))hideTimer=setTimeout(()=>document.body.classList.add('hidden-ui'),3000)}
+['mousemove','mousedown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,activity,{passive:true}));
+let drift=0;setInterval(()=>{if(cfg.burnIn){drift=(drift+1)%4;$('clockView').style.setProperty('--drift-x',(drift%2?3:-3)+'px');$('clockView').style.setProperty('--drift-y',(drift<2?2:-2)+'px')}},180000);
+$('resetSettings').onclick=()=>{cfg={...defaults};ids.forEach(k=>{let el=$(k);if(el){if(el.type==='checkbox')el.checked=!!cfg[k];else el.value=cfg[k]}});apply();toast('Settings reset')};
+$('exportSettings').onclick=()=>{let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'}));a.download='still-clock-settings.json';a.click();URL.revokeObjectURL(a.href)};
+function toast(s){$('toast').textContent=s;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2200)}
+// Ambient particles: lightweight canvas, paused when the tab is hidden.
+const canvas=$('particles'),ctx=canvas.getContext('2d');let dots=[];function resize(){canvas.width=innerWidth*devicePixelRatio;canvas.height=innerHeight*devicePixelRatio;ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);dots=Array.from({length:55},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.3,v:Math.random()*.22+.04}))}addEventListener('resize',resize);resize();
+function draw(){ctx.clearRect(0,0,innerWidth,innerHeight);if(cfg.background==='particles'&&!document.hidden){ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--accent');dots.forEach(d=>{d.y-=d.v;if(d.y<0)d.y=innerHeight;ctx.globalAlpha=.25;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill()})}requestAnimationFrame(draw)}draw();
+// Tools
+let tool='stopwatch',running=false,startedAt=0,elapsed=0,interval=null,laps=[],countdownTotal=300000,pomoPhase='focus',pomoCount=0,alarmFired=false;
+function fmt(ms,centi=true){let t=Math.max(0,ms),h=Math.floor(t/3600000),m=Math.floor(t/60000)%60,s=Math.floor(t/1000)%60,c=Math.floor(t%1000/10);return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+(centi?'.'+String(c).padStart(2,'0'):'')}
+function chooseTool(t){pause();tool=t;document.querySelectorAll('.tool-tab').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));$('toolSub').textContent=t.toUpperCase();$('timerInputs').hidden=t!=='countdown'&&t!=='pomodoro';$('alarmInputs').hidden=t!=='alarm';$('lapTool').hidden=t!=='stopwatch';$('pomLabel').textContent=t==='pomodoro'?'25 MIN FOCUS · 5 MIN BREAK':'';$('startTool').textContent='Start';elapsed=0;running=false;laps=[];$('laps').textContent='';if(t==='countdown')countdownTotal=300000;renderTool()}
+document.querySelectorAll('.tool-tab').forEach(b=>b.onclick=()=>chooseTool(b.dataset.tool));
+function readTimer(){return ((+$('timerHours').value||0)*3600+(+$('timerMinutes').value||0)*60+(+$('timerSeconds').value||0))*1000}
+function renderTool(){let val=tool==='stopwatch'?elapsed:tool==='countdown'?countdownTotal-elapsed:tool==='pomodoro'?countdownTotal-elapsed:0;$('toolReadout').textContent=tool==='alarm'?'—:—':fmt(val);$('pomLabel').textContent=tool==='pomodoro'?(pomoPhase==='focus'?'FOCUS SESSION · '+(pomoCount+1):'BREAK TIME'):''}
+function tick(){let now=performance.now();elapsed=now-startedAt;if(tool==='stopwatch'){renderTool()}else{if(elapsed>=countdownTotal){elapsed=countdownTotal;pause();renderTool();beep();if(tool==='pomodoro'){if(pomoPhase==='focus'){pomoPhase='break';countdownTotal=5*60000}else{pomoPhase='focus';pomoCount++;countdownTotal=25*60000}elapsed=0;$('timerReadout');$('startTool').textContent='Start';renderTool();toast(pomoPhase==='break'?'Focus complete — take a break':'Break complete — back to focus')}else toast('Countdown complete')}else renderTool()}}
+function toggleRun(){if(running){pause()}else start()}
+function start(){if(tool==='alarm'){setAlarm();return}if(tool==='countdown'&&!running&&elapsed===0)countdownTotal=readTimer()||300000;if(tool==='pomodoro'&&!running&&elapsed===0)countdownTotal=pomoPhase==='focus'?25*60000:5*60000;running=true;startedAt=performance.now()-elapsed;interval=setInterval(tick,30);$('startTool').textContent='Pause'}
+function pause(){if(running){clearInterval(interval);running=false;tickSafe()}$('startTool').textContent='Start'}
+function tickSafe(){if(tool==='stopwatch')elapsed=performance.now()-startedAt}
+function reset(){pause();elapsed=0;if(tool==='pomodoro'){pomoPhase='focus';pomoCount=0;countdownTotal=25*60000}else if(tool==='countdown')countdownTotal=readTimer()||300000;renderTool();$('startTool').textContent='Start'}
+$('startTool').onclick=toggleRun;$('resetTool').onclick=reset;$('lapTool').onclick=()=>{if(tool==='stopwatch'&&running){laps.unshift(fmt(elapsed));$('laps').innerHTML=laps.map((x,i)=>`<div> LAP ${String(laps.length-i).padStart(2,'0')} <span style="float:right">${x}</span></div>`).join('')}};
+function setAlarm(){let t=$('alarmTime').value;if(!t){toast('Choose an alarm time first');return}let enabled=$('alarmEnabled').checked;if(!enabled){toast('Enable the alarm toggle');return}localStorage.setItem('still-alarm',t);toast('Alarm set for '+t)}
+setInterval(()=>{let t=localStorage.getItem('still-alarm');if(t&&$('alarmEnabled').checked&&!alarmFired){let now=new Date(),hm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(hm===t){alarmFired=true;beep();toast('Alarm! '+t);if(Notification.permission==='granted')new Notification('Still Clock',{body:'Your alarm is ringing.'})}}if(t){let now=new Date(),hm=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');if(hm!==t)alarmFired=false}},1000);
+function beep(){try{let a=new (window.AudioContext||window.webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=740;g.gain.value=.12;o.start();o.stop(a.currentTime+.7)}catch{}}
+let weatherData=null;async function loadWeather(){let city=cfg.weatherCity||'Bengaluru';try{let geo=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(city)+'&count=1').then(r=>r.json());if(!geo.results?.length)throw Error();let p=geo.results[0],w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.latitude}&longitude=${p.longitude}&current=temperature_2m,weather_code`).then(r=>r.json());let code=w.current.weather_code;weatherData=true;$('weatherTemp').textContent=Math.round(w.current.temperature_2m)+'°';$('weatherPlace').textContent=p.name;$('weatherIcon').textContent=code===0?'☀':code<4?'⛅':code<70?'☁':'🌧';$('weather').classList.add('show')}catch{toast('Weather unavailable — check connection or location')}}
+if(cfg.showWeather)loadWeather();
+// Refresh dynamic controls after initialization.
+$('alarmTime').value=localStorage.getItem('still-alarm')||'07:00';
+$('weatherCity').addEventListener('change',()=>{cfg.weatherCity=$('weatherCity').value;save();if(cfg.showWeather)loadWeather()});
+$('weatherCity').value=cfg.weatherCity||'Bengaluru';
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){ /* A service worker needs its own file; this single-file edition runs offline once saved. */ }
+})();
+</script>
+</body>
+</html>

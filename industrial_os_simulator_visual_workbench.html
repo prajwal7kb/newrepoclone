@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial OS Educational Simulator & Workbench</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        canvas: '#0E0E10',
+                        panel: '#16161A',
+                        subpanel: '#1C1C22',
+                        border: '#27272A',
+                        borderlight: '#3F3F46',
+                        amberaccent: '#FFB000',
+                        amberdark: '#B45309',
+                        emeraldaccent: '#10B981',
+                        emeralddark: '#047857',
+                        textmain: '#F4F4F5',
+                        textmuted: '#A1A1AA',
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
+                        sans: ['Geist Sans', 'Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Strict Design Rules: Sharp 1px borders, Zero Rounded Corners */
+        * {
+            border-radius: 0px !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        /* Custom Dark Monospace Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0E0E10;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #27272A;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3F3F46;
+        }
+
+        /* Physical Hardware Switch Button Pressing */
+        .hw-btn:active {
+            transform: translateY(1px);
+            background-color: #27272A;
+        }
+
+        /* Bus Animation Keyframes */
+        @keyframes busMoveEast {
+            0% { left: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 85%; opacity: 0; }
+        }
+        @keyframes busMoveWest {
+            0% { left: 85%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 0%; opacity: 0; }
+        }
+
+        .anim-bus-east {
+            animation: busMoveEast var(--bus-speed, 1.8s) linear infinite;
+        }
+        .anim-bus-west {
+            animation: busMoveWest var(--bus-speed, 1.8s) linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-canvas text-textmain font-sans antialiased min-h-screen flex flex-col selection:bg-amberaccent selection:text-canvas">
+
+    <!-- Industrial SVG Patterns for Gantt Chart Blocks -->
+    <svg class="hidden" aria-hidden="true">
+        <defs>
+            <!-- Pattern 1: 45 Deg Diagonal Stripes -->
+            <pattern id="pat-diagonal" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="0" y2="8" stroke="#FFB000" stroke-width="3" />
+                <line x1="0" y1="0" x2="8" y2="0" stroke="#16161A" stroke-width="5" />
+            </pattern>
+            <!-- Pattern 2: Crosshatch Grid -->
+            <pattern id="pat-crosshatch" width="8" height="8" patternUnits="userSpaceOnUse">
+                <path d="M 8 0 L 0 0 0 8" fill="none" stroke="#10B981" stroke-width="1.5"/>
+            </pattern>
+            <!-- Pattern 3: Dense Dots -->
+            <pattern id="pat-dots" width="6" height="6" patternUnits="userSpaceOnUse">
+                <circle cx="3" cy="3" r="1.5" fill="#F4F4F5" />
+            </pattern>
+            <!-- Pattern 4: Horizontal Bars -->
+            <pattern id="pat-horizontal" width="6" height="6" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="3" x2="6" y2="3" stroke="#D97706" stroke-width="2" />
+            </pattern>
+            <!-- Pattern 5: Vertical Bars -->
+            <pattern id="pat-vertical" width="6" height="6" patternUnits="userSpaceOnUse">
+                <line x1="3" y1="0" x2="3" y2="6" stroke="#047857" stroke-width="2" />
+            </pattern>
+        </defs>
+    </svg>
+
+    <!-- HEADER / TOP NAVIGATION BAR -->
+    <header class="bg-panel border-b border-border h-14 flex items-center px-4 justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 bg-amberaccent text-canvas flex items-center justify-center font-mono font-bold text-xs">
+                OS
+            </div>
+            <div>
+                <h1 class="text-xs font-mono font-bold tracking-wider text-textmain uppercase">Operating System Concepts & CPU Scheduling Simulator</h1>
+                <p class="text-[10px] font-mono text-textmuted">HARDWARE BENCHMARK & KERNEL WORKBENCH • MODULES 1 & 2</p>
+            </div>
+        </div>
+
+        <!-- Global Mode Indicator & Help Button -->
+        <div class="flex items-center gap-4">
+            <div class="hidden sm:flex items-center gap-3 bg-canvas px-3 py-1 border border-border font-mono text-[11px]">
+                <span class="text-textmuted uppercase">CPU Privilege:</span>
+                <span id="globalPrivilegeBadge" class="bg-emeralddark/40 text-emeraldaccent border border-emeraldaccent px-2 py-0.5 font-bold flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 bg-emeraldaccent"></span>
+                    MODE BIT 1 [USER]
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2 font-mono text-[11px] text-textmuted bg-canvas px-3 py-1 border border-border">
+                <i data-lucide="clock" class="w-3.5 h-3.5 text-amberaccent"></i>
+                <span id="globalSysClock" class="text-textmain font-bold">00:00:00</span>
+            </div>
+
+            <button onclick="openHelpModal('global')" class="hw-btn h-8 px-3 bg-panel hover:bg-subpanel text-amberaccent border border-amberaccent font-mono text-xs font-bold flex items-center gap-1.5 transition">
+                <span>[?]</span> HELP MANUAL
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN APP LAYOUT CONTAINER -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- LEFT CONTROL SIDEBAR -->
+        <aside class="w-full md:w-64 bg-panel border-r border-border shrink-0 flex flex-col justify-between">
+            <div class="p-3 space-y-4 font-mono text-xs">
+                
+                <!-- Navigation Tabs Section -->
+                <div>
+                    <div class="px-2 py-1 text-[10px] font-bold text-amberaccent uppercase tracking-wider border-b border-border mb-2">
+                        // Syllabus Workbench Navigation
+                    </div>
+                    <div class="space-y-1">
+                        <button onclick="switchTab('tab-bus')" id="btn-tab-bus" class="nav-btn w-full text-left px-3 py-2 border border-amberaccent bg-amberaccent/10 text-amberaccent font-bold flex items-center justify-between">
+                            <span>1. SYSTEM BUS WORKBENCH</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="switchTab('tab-scheduling')" id="btn-tab-scheduling" class="nav-btn w-full text-left px-3 py-2 border border-border bg-canvas text-textmuted hover:text-textmain hover:bg-subpanel flex items-center justify-between">
+                            <span>2. CPU SCHEDULING LAB</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="switchTab('tab-process')" id="btn-tab-process" class="nav-btn w-full text-left px-3 py-2 border border-border bg-canvas text-textmuted hover:text-textmain hover:bg-subpanel flex items-center justify-between">
+                            <span>3. PROCESS STATE & PCB</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="switchTab('tab-syscall')" id="btn-tab-syscall" class="nav-btn w-full text-left px-3 py-2 border border-border bg-canvas text-textmuted hover:text-textmain hover:bg-subpanel flex items-center justify-between">
+                            <span>4. DUAL-MODE & TRAP</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="switchTab('tab-ipc')" id="btn-tab-ipc" class="nav-btn w-full text-left px-3 py-2 border border-border bg-canvas text-textmuted hover:text-textmain hover:bg-subpanel flex items-center justify-between">
+                            <span>5. IPC & MULTITHREADING</span>
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hardware Status Deck -->
+                <div class="p-3 bg-canvas border border-border space-y-2">
+                    <div class="text-[10px] font-bold text-textmuted uppercase flex justify-between">
+                        <span>HW INTERRUPT LINES</span>
+                        <span class="text-emeraldaccent">READY</span>
+                    </div>
+                    <div class="space-y-1 text-[11px]">
+                        <div class="flex justify-between border-b border-border/50 pb-1">
+                            <span class="text-textmuted">IRQ 0 (Timer):</span>
+                            <span class="text-emeraldaccent font-bold">ACTIVE</span>
+                        </div>
+                        <div class="flex justify-between border-b border-border/50 pb-1">
+                            <span class="text-textmuted">IRQ 1 (Keyboard):</span>
+                            <span id="sidebarIrq1" class="text-textmuted">CLEAR</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-textmuted">IRQ 14 (Primary ATA):</span>
+                            <span class="text-textmuted">CLEAR</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Meta Info -->
+            <div class="p-3 bg-canvas border-t border-border font-mono text-[10px] text-textmuted space-y-1">
+                <div>SPEC: IEEE 1003.1 POSIX / x86_64</div>
+                <div>SYSTEM BUS: 64-BIT PARALLEL COPPER</div>
+            </div>
+        </aside>
+
+        <!-- RIGHT MAIN WORKSPACE CONTENT -->
+        <main class="flex-1 bg-canvas p-4 md:p-6 overflow-y-auto">
+
+            <!-- MODULE 1: HARDWARE SYSTEM BUS ARCHITECTURAL WORKBENCH -->
+            <section id="tab-bus" class="tab-content space-y-6">
+                <div class="bg-panel border border-border p-5 space-y-6">
+                    
+                    <!-- Title Bar -->
+                    <div class="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 class="text-sm font-mono font-bold text-amberaccent uppercase flex items-center gap-2">
+                                <i data-lucide="cpu" class="w-4 h-4"></i> Hardware System Bus Architecture Visualizer
+                            </h2>
+                            <p class="text-xs text-textmuted mt-0.5">Physical interconnect visualization: Address, Data, and Control signal routing between System Components.</p>
+                        </div>
+                        <button onclick="openHelpModal('bus')" class="hw-btn px-2.5 py-1 bg-canvas border border-border text-amberaccent font-mono text-xs">
+                            [?] GUIDE
+                        </button>
+                    </div>
+
+                    <!-- Operations Workbench Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-canvas p-3 border border-border font-mono text-xs">
+                        <div>
+                            <label class="block text-[10px] font-bold text-textmuted uppercase mb-1">Bus Command Signal</label>
+                            <select id="busOpType" onchange="updateBusInputs()" class="w-full bg-panel border border-border text-textmain p-1.5 focus:border-amberaccent focus:outline-none">
+                                <option value="read">EXEC MEMORY READ (0x40A0)</option>
+                                <option value="write">EXEC MEMORY WRITE (0x40A4)</option>
+                                <option value="dma">DMA DISK TRANSFER (Sector #2048)</option>
+                                <option value="irq">HARDWARE INTERRUPT (IRQ 1)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-textmuted uppercase mb-1">Target Address (Hex)</label>
+                            <input type="text" id="busTargetAddr" value="0x40A0" class="w-full bg-panel border border-border text-amberaccent font-bold p-1.5 focus:border-amberaccent focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-textmuted uppercase mb-1">Data Payload (Hex)</label>
+                            <input type="text" id="busDataPayload" value="0x00FF88" class="w-full bg-panel border border-border text-emeraldaccent font-bold p-1.5 focus:border-amberaccent focus:outline-none">
+                        </div>
+
+                        <div class="flex items-end">
+                            <button onclick="triggerSystemBusOp()" class="hw-btn w-full py-1.5 bg-amberdark text-textmain border border-amberaccent font-bold uppercase hover:bg-amber-700 transition">
+                                EXECUTE SIGNAL
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hardware Components Workbench Layout -->
+                    <div class="bg-canvas border border-border p-4 space-y-6 relative">
+                        
+                        <!-- Top 4 Solid Hardware Units -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            
+                            <!-- CPU Core Unit -->
+                            <div id="unit-cpu" class="bg-panel border-2 border-amberaccent p-3 space-y-2 font-mono text-xs">
+                                <div class="flex justify-between items-center border-b border-border pb-1">
+                                    <span class="font-bold text-amberaccent flex items-center gap-1"><i data-lucide="square" class="w-3.5 h-3.5"></i> [CPU CORE]</span>
+                                    <span class="bg-amberdark/30 text-amberaccent px-1 text-[10px]">EXEC</span>
+                                </div>
+                                <div class="space-y-1 text-[11px]">
+                                    <div class="flex justify-between"><span class="text-textmuted">$PC:</span><span id="reg-pc" class="text-textmain font-bold">0x00401000</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">$SP:</span><span id="reg-sp" class="text-textmain font-bold">0x7FFFFFA0</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">$EAX:</span><span id="reg-eax" class="text-amberaccent font-bold">0x00FF8800</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">$EBX:</span><span id="reg-ebx" class="text-emeraldaccent font-bold">0x00000001</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">PRIVILEGE:</span><span class="text-emeraldaccent font-bold">BIT 1 (USER)</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Main Memory RAM Unit -->
+                            <div id="unit-ram" class="bg-panel border border-border p-3 space-y-2 font-mono text-xs">
+                                <div class="flex justify-between items-center border-b border-border pb-1">
+                                    <span class="font-bold text-textmain flex items-center gap-1"><i data-lucide="database" class="w-3.5 h-3.5"></i> [MAIN RAM]</span>
+                                    <span class="bg-canvas text-textmuted px-1 text-[10px]">DRAM</span>
+                                </div>
+                                <div class="space-y-1 text-[11px]">
+                                    <div class="flex justify-between"><span class="text-textmuted">0x40A0:</span><span id="ram-40a0" class="text-amberaccent font-bold">0x00FF88</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">0x40A4:</span><span id="ram-40a4" class="text-textmain">0x12A099</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">0x40A8:</span><span class="text-textmuted">0x000000</span></div>
+                                    <div class="flex justify-between"><span class="text-textmuted">0x40AC:</span><span class="text-textmuted">0x000000</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Disk Controller Unit -->
+                            <div id="unit-disk" class="bg-panel border border-border p-3 space-y-2 font-mono text-xs">
+                                <div class="flex justify-between items-center border-b border-border pb-1">
+                                    <span class="font-bold text-textmain flex items-center gap-1"><i data-lucide="hard-drive" class="w-3.5 h-3.5"></i> [DISK DMA]</span>
+                                    <span class="bg-canvas text-textmuted px-1 text-[10px]">SATA3</span>
+                                </div>
+                                <div class="space-y-1 text-[11px] text-textmuted">
+                                    <div class="flex justify-between"><span>DMA ADDR:</span><span class="text-textmain">0x7000</span></div>
+                                    <div class="flex justify-between"><span>SECTOR:</span><span class="text-textmain">#2048</span></div>
+                                    <div class="flex justify-between"><span>STATUS:</span><span class="text-emeraldaccent font-bold">READY</span></div>
+                                </div>
+                            </div>
+
+                            <!-- I/O Controller Unit -->
+                            <div id="unit-io" class="bg-panel border border-border p-3 space-y-2 font-mono text-xs">
+                                <div class="flex justify-between items-center border-b border-border pb-1">
+                                    <span class="font-bold text-textmain flex items-center gap-1"><i data-lucide="keyboard" class="w-3.5 h-3.5"></i> [I/O SYSTEM]</span>
+                                    <span class="bg-canvas text-textmuted px-1 text-[10px]">TTY0</span>
+                                </div>
+                                <div class="space-y-1 text-[11px] text-textmuted">
+                                    <div class="flex justify-between"><span>IRQ SIGNAL:</span><span id="unitIrqStatus" class="text-textmain">CLEAR</span></div>
+                                    <div class="flex justify-between"><span>BUFFER:</span><span class="text-textmain">0x0D (\n)</span></div>
+                                    <div class="flex justify-between"><span>DEVICE:</span><span class="text-textmain">KB_STDIN</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Solid Copper Bus Layout Tracks -->
+                        <div class="space-y-3 pt-4 border-t border-border">
+                            
+                            <!-- Address Bus Track -->
+                            <div class="bg-[#2D1606] border border-amberdark p-2 font-mono text-xs relative flex items-center justify-between">
+                                <span class="font-bold text-amberaccent shrink-0 w-44 flex items-center gap-1.5">
+                                    <i data-lucide="arrow-right-left" class="w-3.5 h-3.5"></i> ADDRESS BUS (32-BIT)
+                                </span>
+                                <div class="flex-1 h-5 bg-[#1C0D03] border border-amberdark/50 relative overflow-hidden mx-3">
+                                    <div id="badgeAddrBus" class="hidden absolute top-0.5 bg-amberaccent text-canvas px-2 py-0.5 font-mono text-[10px] font-bold border border-textmain">
+                                        [0x40A0]
+                                    </div>
+                                </div>
+                                <span id="labelAddrVal" class="text-amberaccent font-bold text-[11px] w-20 text-right">0x40A0</span>
+                            </div>
+
+                            <!-- Data Bus Track -->
+                            <div class="bg-[#05261C] border border-emeralddark p-2 font-mono text-xs relative flex items-center justify-between">
+                                <span class="font-bold text-emeraldaccent shrink-0 w-44 flex items-center gap-1.5">
+                                    <i data-lucide="binary" class="w-3.5 h-3.5"></i> DATA BUS (64-BIT)
+                                </span>
+                                <div class="flex-1 h-5 bg-[#021711] border border-emeralddark/50 relative overflow-hidden mx-3">
+                                    <div id="badgeDataBus" class="hidden absolute top-0.5 bg-emeraldaccent text-canvas px-2 py-0.5 font-mono text-[10px] font-bold border border-textmain">
+                                        [0x00FF88]
+                                    </div>
+                                </div>
+                                <span id="labelDataVal" class="text-emeraldaccent font-bold text-[11px] w-20 text-right">0x00FF88</span>
+                            </div>
+
+                            <!-- Control Bus Track -->
+                            <div class="bg-subpanel border border-border p-2 font-mono text-xs relative flex items-center justify-between">
+                                <span class="font-bold text-textmain shrink-0 w-44 flex items-center gap-1.5">
+                                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-textmuted"></i> CONTROL BUS (SIGNAL)
+                                </span>
+                                <div class="flex-1 h-5 bg-canvas border border-border relative overflow-hidden mx-3">
+                                    <div id="badgeCtrlBus" class="hidden absolute top-0.5 bg-textmain text-canvas px-2 py-0.5 font-mono text-[10px] font-bold">
+                                        [READ_MEM]
+                                    </div>
+                                </div>
+                                <span id="labelCtrlVal" class="text-textmain font-bold text-[11px] w-20 text-right">MEM_READ</span>
+                            </div>
+                        </div>
+
+                        <!-- System Trace Terminal Console Log -->
+                        <div class="bg-panel p-3 border border-border font-mono text-xs space-y-1.5">
+                            <div class="text-[10px] font-bold text-textmuted uppercase flex justify-between border-b border-border pb-1">
+                                <span>SYSTEM LOG // HARDWARE BUS TRACE LOG</span>
+                                <span>BAUD: 115200</span>
+                            </div>
+                            <div id="busTerminalLog" class="h-24 overflow-y-auto space-y-1 text-[11px] text-textmuted">
+                                <div>[00:00:00] SYSTEM INITIALIZED. BUS CONTROLLER IN STANDBY MODE.</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODULE 2: INDUSTRIAL CPU SCHEDULING LAB -->
+            <section id="tab-scheduling" class="tab-content hidden space-y-6">
+                <div class="bg-panel border border-border p-5 space-y-6">
+                    
+                    <!-- Title Bar -->
+                    <div class="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 class="text-sm font-mono font-bold text-amberaccent uppercase flex items-center gap-2">
+                                <i data-lucide="bar-chart-2" class="w-4 h-4"></i> Industrial CPU Scheduling Execution Lab
+                            </h2>
+                            <p class="text-xs text-textmuted mt-0.5">Simulate CPU process dispatch algorithms with precise block-matrix Gantt charts & scheduling metrics.</p>
+                        </div>
+                        <button onclick="openHelpModal('scheduling')" class="hw-btn px-2.5 py-1 bg-canvas border border-border text-amberaccent font-mono text-xs">
+                            [?] GUIDE & FORMULAS
+                        </button>
+                    </div>
+
+                    <!-- Split Workspace: 30% Left Sidebar Control Deck / 70% Right Main Deck -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        <!-- 30% Left Sidebar Control Deck -->
+                        <div class="lg:col-span-4 space-y-4 font-mono text-xs">
+                            
+                            <!-- Algorithm & Quantum Config Box -->
+                            <div class="bg-canvas p-3 border border-border space-y-3">
+                                <div class="text-[10px] font-bold text-amberaccent uppercase border-b border-border pb-1">// Algorithm Selection</div>
+                                <div>
+                                    <select id="schedAlgorithm" onchange="handleAlgoChange()" class="w-full bg-panel border border-border text-textmain p-2 focus:border-amberaccent focus:outline-none font-bold">
+                                        <option value="fcfs">FCFS (First-Come First-Served)</option>
+                                        <option value="sjf">SJF (Shortest Job First - Non-Preemptive)</option>
+                                        <option value="srtf">SRTF (Shortest Remaining Time First)</option>
+                                        <option value="priority-np">Priority (Non-Preemptive)</option>
+                                        <option value="priority-p">Priority (Preemptive)</option>
+                                        <option value="rr" selected>Round Robin (RR)</option>
+                                    </select>
+                                </div>
+
+                                <div id="quantumInputWrapper" class="space-y-1">
+                                    <label class="block text-[10px] text-textmuted uppercase">Time Quantum (RR):</label>
+                                    <input type="number" id="schedQuantum" value="2" min="1" max="10" class="w-full bg-panel border border-border text-amberaccent font-bold p-1.5">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] text-textmuted uppercase mb-1">Workload Presets:</label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button onclick="loadWorkloadPreset('standard')" class="hw-btn p-1.5 bg-panel border border-border text-textmuted text-[10px] text-center">Standard</button>
+                                        <button onclick="loadWorkloadPreset('convoy')" class="hw-btn p-1.5 bg-panel border border-border text-textmuted text-[10px] text-center">Convoy Effect</button>
+                                        <button onclick="loadWorkloadPreset('preempt')" class="hw-btn p-1.5 bg-panel border border-border text-textmuted text-[10px] text-center">Priority Preempt</button>
+                                        <button onclick="loadWorkloadPreset('io')" class="hw-btn p-1.5 bg-panel border border-border text-textmuted text-[10px] text-center">CPU / IO Bound</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Process Input Queue Table -->
+                            <div class="bg-canvas border border-border p-3 space-y-3">
+                                <div class="flex justify-between items-center border-b border-border pb-1">
+                                    <span class="text-[10px] font-bold text-textmuted uppercase">// Process Workload Deck</span>
+                                    <button onclick="addProcessRow()" class="hw-btn px-2 py-0.5 bg-panel border border-border text-emeraldaccent font-bold text-[10px]">+ ADD</button>
+                                </div>
+
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-border text-[10px] text-textmuted">
+                                                <th class="py-1">PID</th>
+                                                <th class="py-1">AT</th>
+                                                <th class="py-1">BT</th>
+                                                <th class="py-1">PRIO</th>
+                                                <th class="py-1 text-right">DEL</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="processInputRows" class="divide-y divide-border/40 text-[11px]">
+                                            <!-- Dynamic Rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Controls -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="runSchedulingLab()" class="hw-btn py-2 bg-amberdark text-textmain border border-amberaccent font-bold text-xs uppercase">
+                                    [ RUN SIM ]
+                                </button>
+                                <button onclick="resetSchedulingLab()" class="hw-btn py-2 bg-panel text-textmuted border border-border font-bold text-xs uppercase">
+                                    [ RESET ]
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- 70% Right Workspace (Gantt Chart & Metrics Dashboard) -->
+                        <div class="lg:col-span-8 space-y-4 font-mono text-xs">
+                            
+                            <!-- Gantt Chart Execution Display Container -->
+                            <div class="bg-canvas border border-border p-4 space-y-3">
+                                <div class="flex justify-between items-center border-b border-border pb-2">
+                                    <span class="text-[10px] font-bold text-amberaccent uppercase">// Continuous Matrix Gantt Chart Execution</span>
+                                    <span id="lblTotalTimeline" class="text-[11px] text-textmuted">Duration: 0 Ticks</span>
+                                </div>
+
+                                <!-- Gantt Chart Industrial Matrix Bar -->
+                                <div id="ganttMatrixBar" class="w-full bg-panel border border-border h-14 flex items-center overflow-x-auto relative p-1">
+                                    <div class="text-textmuted text-xs text-center w-full font-mono">Press [ RUN SIM ] to execute scheduler workload logic.</div>
+                                </div>
+
+                                <!-- Monospace Axis Time Ticks -->
+                                <div id="ganttTimelineTicks" class="w-full flex items-center border-t border-border pt-1 font-mono text-[10px] text-textmuted overflow-x-auto">
+                                    <!-- Dynamic Ticks -->
+                                </div>
+                            </div>
+
+                            <!-- Performance Metrics Summary Panel -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div class="bg-canvas p-3 border border-border text-center">
+                                    <span class="text-textmuted text-[10px] block uppercase">Avg Waiting Time (AWT)</span>
+                                    <span id="m-awt" class="text-base font-bold text-amberaccent mt-0.5 block">0.00 Ticks</span>
+                                </div>
+                                <div class="bg-canvas p-3 border border-border text-center">
+                                    <span class="text-textmuted text-[10px] block uppercase">Avg Turnaround Time (ATAT)</span>
+                                    <span id="m-atat" class="text-base font-bold text-textmain mt-0.5 block">0.00 Ticks</span>
+                                </div>
+                                <div class="bg-canvas p-3 border border-border text-center">
+                                    <span class="text-textmuted text-[10px] block uppercase">CPU Utilization</span>
+                                    <span id="m-util" class="text-base font-bold text-emeraldaccent mt-0.5 block">100.0%</span>
+                                </div>
+                                <div class="bg-canvas p-3 border border-border text-center">
+                                    <span class="text-textmuted text-[10px] block uppercase">Throughput</span>
+                                    <span id="m-tput" class="text-base font-bold text-textmain mt-0.5 block">0.00 / Tick</span>
+                                </div>
+                            </div>
+
+                            <!-- Calculated Metrics Table -->
+                            <div class="bg-canvas border border-border p-3 space-y-2">
+                                <div class="text-[10px] font-bold text-textmuted uppercase border-b border-border pb-1">
+                                    // Process Execution Metrics Summary Table
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left font-mono text-[11px] border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-border text-textmuted text-[10px]">
+                                                <th class="py-1.5">PID</th>
+                                                <th class="py-1.5">AT</th>
+                                                <th class="py-1.5">BT</th>
+                                                <th class="py-1.5">CT</th>
+                                                <th class="py-1.5">TAT (CT-AT)</th>
+                                                <th class="py-1.5">WT (TAT-BT)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="schedResultsBody" class="divide-y divide-border/40 text-textmain">
+                                            <tr><td colspan="6" class="py-4 text-center text-textmuted">No active simulation results.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- MODULE 3: 5-STATE PROCESS MACHINE & PCB MEMORY INSPECTOR -->
+            <section id="tab-process" class="tab-content hidden space-y-6">
+                <div class="bg-panel border border-border p-5 space-y-6">
+                    <div class="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 class="text-sm font-mono font-bold text-amberaccent uppercase flex items-center gap-2">
+                                <i data-lucide="workflow" class="w-4 h-4"></i> 5-State Machine Lifecycle & PCB Inspector
+                            </h2>
+                            <p class="text-xs text-textmuted mt-0.5">Direct vector process state transitions & memory dump inspection of the Process Control Block (PCB).</p>
+                        </div>
+                        <button onclick="openHelpModal('process')" class="hw-btn px-2.5 py-1 bg-canvas border border-border text-amberaccent font-mono text-xs">
+                            [?] GUIDE
+                        </button>
+                    </div>
+
+                    <!-- 5-State Machine Visualizer -->
+                    <div class="bg-canvas border border-border p-5 space-y-4">
+                        <div class="flex justify-between items-center border-b border-border pb-2 font-mono text-xs">
+                            <span class="text-[10px] font-bold text-textmuted uppercase">// Right-Angle Vector 5-State Process Machine</span>
+                            <div class="flex gap-2">
+                                <button onclick="advanceProcessState('admit')" class="hw-btn px-2 py-1 bg-panel border border-border text-amberaccent font-bold text-[11px]">ADMIT</button>
+                                <button onclick="advanceProcessState('dispatch')" class="hw-btn px-2 py-1 bg-panel border border-emeraldaccent text-emeraldaccent font-bold text-[11px]">DISPATCH</button>
+                                <button onclick="advanceProcessState('wait')" class="hw-btn px-2 py-1 bg-panel border border-border text-textmuted font-bold text-[11px]">I/O WAIT</button>
+                                <button onclick="advanceProcessState('exit')" class="hw-btn px-2 py-1 bg-panel border border-border text-textmain font-bold text-[11px]">EXIT</button>
+                            </div>
+                        </div>
+
+                        <!-- 5 States Grid Container with Vector Layout -->
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono text-xs text-center relative py-4">
+                            
+                            <div id="pnode-new" class="bg-panel border border-border p-3 space-y-1">
+                                <div class="font-bold text-textmuted text-sm">NEW</div>
+                                <div class="text-[9px] text-textmuted">fork() Created</div>
+                            </div>
+
+                            <div id="pnode-ready" class="bg-panel border border-border p-3 space-y-1">
+                                <div class="font-bold text-amberaccent text-sm">READY</div>
+                                <div class="text-[9px] text-textmuted">In Ready Queue</div>
+                            </div>
+
+                            <div id="pnode-running" class="bg-emeralddark/40 border-2 border-emeraldaccent p-3 space-y-1">
+                                <div class="font-bold text-emeraldaccent text-sm">RUNNING</div>
+                                <div class="text-[9px] text-emeraldaccent">Executing CPU</div>
+                            </div>
+
+                            <div id="pnode-waiting" class="bg-panel border border-border p-3 space-y-1">
+                                <div class="font-bold text-textmuted text-sm">WAITING</div>
+                                <div class="text-[9px] text-textmuted">I/O Blocked</div>
+                            </div>
+
+                            <div id="pnode-terminated" class="bg-panel border border-border p-3 space-y-1">
+                                <div class="font-bold text-textmuted text-sm">TERMINATED</div>
+                                <div class="text-[9px] text-textmuted">Reaped / Zombie</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PCB Memory Dump Inspector -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
+                        
+                        <!-- Low Level Tabular Schema Dump -->
+                        <div class="bg-canvas border border-border p-4 space-y-3">
+                            <div class="flex justify-between items-center border-b border-border pb-2">
+                                <span class="text-[10px] font-bold text-amberaccent uppercase">// PCB Memory Dump [0x7FFF0000]</span>
+                                <span class="text-[10px] bg-panel text-textmain px-1.5 py-0.5 border border-border">PID #1042</span>
+                            </div>
+
+                            <table class="w-full text-left border-collapse font-mono text-[11px]">
+                                <tbody class="divide-y divide-border/60">
+                                    <tr><td class="py-1 text-textmuted">Process ID (PID):</td><td class="py-1 text-amberaccent font-bold">1042</td></tr>
+                                    <tr><td class="py-1 text-textmuted">Parent PID (PPID):</td><td class="py-1 text-textmain">1001 (init)</td></tr>
+                                    <tr><td class="py-1 text-textmuted">Process State:</td><td id="pcbStateVal" class="py-1 text-emeraldaccent font-bold">RUNNING (0x01)</td></tr>
+                                    <tr><td class="py-1 text-textmuted">Program Counter ($PC):</td><td id="pcbPcVal" class="py-1 text-textmain">0x00401020</td></tr>
+                                    <tr><td class="py-1 text-textmuted">Stack Pointer ($SP):</td><td class="py-1 text-textmain">0x7FFFFFA0</td></tr>
+                                    <tr><td class="py-1 text-textmuted">CPU Registers ($AX, $BX):</td><td class="py-1 text-textmain">EAX=0x00FF, EBX=0x0001</td></tr>
+                                    <tr><td class="py-1 text-textmuted">Memory Base / Limit:</td><td class="py-1 text-textmain">BASE: 0x4000 / LIMIT: 64KB</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Active File Descriptors Block -->
+                        <div class="bg-canvas border border-border p-4 space-y-3">
+                            <div class="text-[10px] font-bold text-textmuted uppercase border-b border-border pb-2">
+                                // Active File Descriptor Table (fd)
+                            </div>
+                            <div class="bg-panel p-3 border border-border font-mono text-[11px] text-textmain space-y-1">
+                                <div>fd[0]: STDIN  -> /dev/tty0 (Keyboard Input Stream)</div>
+                                <div>fd[1]: STDOUT -> /dev/tty0 (Terminal Display Output)</div>
+                                <div>fd[2]: STDERR -> /dev/tty0 (Error Stream Target)</div>
+                                <div>fd[3]: FILE*  -> /var/log/syslog (Read/Write Block)</div>
+                            </div>
+                            <p class="text-[11px] text-textmuted leading-relaxed">
+                                During process context switching, the kernel stores this entire PCB table structure in kernel memory space before restoring the next process state into hardware registers.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODULE 4: DUAL-MODE & SYSTEM CALL TRAP ENGINE -->
+            <section id="tab-syscall" class="tab-content hidden space-y-6">
+                <div class="bg-panel border border-border p-5 space-y-6">
+                    <div class="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 class="text-sm font-mono font-bold text-amberaccent uppercase flex items-center gap-2">
+                                <i data-lucide="terminal" class="w-4 h-4"></i> Dual-Mode Execution & Software TRAP Handler
+                            </h2>
+                            <p class="text-xs text-textmuted mt-0.5">Simulate hardware privilege mode bit shifts (`int 0x80`) and IVT kernel vector jumps.</p>
+                        </div>
+                        <button onclick="openHelpModal('syscall')" class="hw-btn px-2.5 py-1 bg-canvas border border-border text-amberaccent font-mono text-xs">
+                            [?] GUIDE
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 font-mono text-xs">
+                        
+                        <!-- Syscall Launcher Control Panel -->
+                        <div class="bg-canvas p-4 border border-border space-y-4">
+                            <div class="text-[10px] font-bold text-amberaccent uppercase border-b border-border pb-1">
+                                // Software Trap Invoker
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-textmuted uppercase mb-1">Select System Call:</label>
+                                <select id="trapSyscallType" class="w-full bg-panel border border-border text-textmain p-2 focus:border-amberaccent focus:outline-none font-bold">
+                                    <option value="sys_read">sys_read(fd=0, buf, count=1024)</option>
+                                    <option value="sys_write">sys_write(fd=1, "Hello", 5)</option>
+                                    <option value="sys_fork">sys_fork() -> Clone PCB</option>
+                                    <option value="sys_exec">sys_exec(path="/bin/sh")</option>
+                                </select>
+                            </div>
+
+                            <button onclick="triggerTrapCall()" class="hw-btn w-full py-2 bg-amberdark text-textmain border border-amberaccent font-bold uppercase">
+                                EXECUTE `int 0x80` TRAP
+                            </button>
+                        </div>
+
+                        <!-- Dynamic Hardware Mode & IVT Inspection -->
+                        <div class="lg:col-span-2 bg-canvas p-4 border border-border space-y-4 flex flex-col justify-between">
+                            <div class="flex justify-between items-center bg-panel p-3 border border-border">
+                                <div class="flex items-center gap-3">
+                                    <div id="modeBitBox" class="w-8 h-8 bg-emeralddark text-emeraldaccent border border-emeraldaccent flex items-center justify-center font-bold text-sm">
+                                        1
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-textmain">CPU privilege Register State</div>
+                                        <div id="modeBitLabel" class="text-[11px] text-emeraldaccent">USER MODE (Bit 1 - Restricted Instructions)</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] text-textmuted block">IVT Offset Vector</span>
+                                    <span class="text-amberaccent font-bold">0x80 (128)</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-panel p-3 border border-border space-y-2">
+                                <div class="text-[10px] text-textmuted uppercase border-b border-border pb-1">IVT Handler Lookup Mapping</div>
+                                <div class="flex justify-between text-[11px]">
+                                    <span class="text-textmuted">Vector Offset 0x80 Address:</span>
+                                    <span class="text-amberaccent font-bold">0x80001000 [kernel_sys_call_entry]</span>
+                                </div>
+                            </div>
+
+                            <div id="trapTraceConsole" class="bg-panel p-3 border border-border h-24 overflow-y-auto space-y-1 text-[11px] text-textmuted">
+                                <div>// Waiting for software TRAP instruction invocation...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MODULE 5: IPC & MULTITHREADING ENGINE -->
+            <section id="tab-ipc" class="tab-content hidden space-y-6">
+                <div class="bg-panel border border-border p-5 space-y-6">
+                    <div class="flex items-center justify-between border-b border-border pb-3">
+                        <div>
+                            <h2 class="text-sm font-mono font-bold text-amberaccent uppercase flex items-center gap-2">
+                                <i data-lucide="git-fork" class="w-4 h-4"></i> Inter-Process Communication & Threading Models
+                            </h2>
+                            <p class="text-xs text-textmuted mt-0.5">Shared Memory vs Message Passing IPC and User-to-Kernel Thread mapping visualizer.</p>
+                        </div>
+                        <button onclick="openHelpModal('ipc')" class="hw-btn px-2.5 py-1 bg-canvas border border-border text-amberaccent font-mono text-xs">
+                            [?] GUIDE
+                        </button>
+                    </div>
+
+                    <!-- IPC Simulator Block -->
+                    <div class="bg-canvas border border-border p-4 space-y-4 font-mono text-xs">
+                        <div class="flex justify-between items-center border-b border-border pb-2">
+                            <span class="text-[10px] font-bold text-amberaccent uppercase">// IPC Architecture Selector</span>
+                            <div class="flex gap-2">
+                                <button onclick="setIpcMode('shared')" id="btn-ipc-shared" class="hw-btn px-3 py-1 bg-amberdark text-textmain border border-amberaccent font-bold">SHARED MEMORY</button>
+                                <button onclick="setIpcMode('msg')" id="btn-ipc-msg" class="hw-btn px-3 py-1 bg-panel text-textmuted border border-border font-bold">MESSAGE PASSING</button>
+                            </div>
+                        </div>
+
+                        <div id="ipcDisplayBox" class="bg-panel p-4 border border-border space-y-2">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+
+                    <!-- Multithreading Architecture Deck -->
+                    <div class="bg-canvas border border-border p-4 space-y-4 font-mono text-xs">
+                        <div class="text-[10px] font-bold text-textmuted uppercase border-b border-border pb-2">
+                            // Multithreading Mapping Models
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-panel p-3 border border-border space-y-2">
+                                <div class="font-bold text-amberaccent">Many-to-One Model</div>
+                                <p class="text-[11px] text-textmuted leading-relaxed">Many user threads mapped to 1 kernel thread. Fast user context switch, but 1 blocking system call blocks all threads.</p>
+                            </div>
+                            <div class="bg-panel border-2 border-emeraldaccent p-3 space-y-2">
+                                <div class="font-bold text-emeraldaccent">One-to-One Model (Linux/Win)</div>
+                                <p class="text-[11px] text-textmuted leading-relaxed">Each user thread maps directly to 1 kernel thread. True multi-core execution; higher overhead creating kernel threads.</p>
+                            </div>
+                            <div class="bg-panel p-3 border border-border space-y-2">
+                                <div class="font-bold text-textmain">Many-to-Many Model</div>
+                                <p class="text-[11px] text-textmuted leading-relaxed">Multiplexes M user threads onto N kernel threads (M ≥ N). Best concurrency without saturating kernel structures.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- TECHNICAL HELP POPUP MODAL -->
+    <div id="globalHelpModal" class="hidden fixed inset-0 z-50 bg-canvas/90 backdrop-blur-none flex items-center justify-center p-4">
+        <div class="bg-panel border border-border max-w-xl w-full p-5 space-y-4 font-mono text-xs text-textmain">
+            <div class="flex justify-between items-center border-b border-border pb-2">
+                <span id="helpModalTitle" class="font-bold text-amberaccent uppercase">// TECHNICAL GUIDE & FORMULAS</span>
+                <button onclick="closeHelpModal()" class="text-textmuted hover:text-textmain font-bold">[X] CLOSE</button>
+            </div>
+            <div id="helpModalBody" class="space-y-3 leading-relaxed text-textmuted text-[11px]">
+                <!-- Dynamic Content -->
+            </div>
+            <div class="text-right border-t border-border pt-2">
+                <button onclick="closeHelpModal()" class="hw-btn px-4 py-1 bg-amberdark text-textmain border border-amberaccent font-bold">DISMISS</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // System Clock Counter
+        let globalSecs = 0;
+        setInterval(() => {
+            globalSecs++;
+            const h = String(Math.floor(globalSecs / 3600)).padStart(2, '0');
+            const m = String(Math.floor((globalSecs % 3600) / 60)).padStart(2, '0');
+            const s = String(globalSecs % 60).padStart(2, '0');
+            document.getElementById('globalSysClock').innerText = `${h}:${m}:${s}`;
+        }, 1000);
+
+        // Sidebar Navigation Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(tabId);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full text-left px-3 py-2 border border-border bg-canvas text-textmuted hover:text-textmain hover:bg-subpanel flex items-center justify-between';
+            });
+
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'nav-btn w-full text-left px-3 py-2 border border-amberaccent bg-amberaccent/10 text-amberaccent font-bold flex items-center justify-between';
+            }
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 1: HARDWARE BUS WORKBENCH LOGIC
+           ------------------------------------------------------------------- */
+        function updateBusInputs() {
+            const op = document.getElementById('busOpType').value;
+            const targetAddr = document.getElementById('busTargetAddr');
+            const dataVal = document.getElementById('busDataPayload');
+
+            if (op === 'read') {
+                targetAddr.value = '0x40A0';
+                dataVal.value = '0x00FF88';
+            } else if (op === 'write') {
+                targetAddr.value = '0x40A4';
+                dataVal.value = '0x12A099';
+            } else if (op === 'dma') {
+                targetAddr.value = '0x7000';
+                dataVal.value = 'SEC#2048';
+            } else if (op === 'irq') {
+                targetAddr.value = '0x0001';
+                dataVal.value = 'IRQ_LINE_1';
+            }
+        }
+
+        function triggerSystemBusOp() {
+            const op = document.getElementById('busOpType').value;
+            const addr = document.getElementById('busTargetAddr').value;
+            const data = document.getElementById('busDataPayload').value;
+
+            const bAddr = document.getElementById('badgeAddrBus');
+            const bData = document.getElementById('badgeDataBus');
+            const bCtrl = document.getElementById('badgeCtrlBus');
+            const log = document.getElementById('busTerminalLog');
+
+            bAddr.innerText = `[${addr}]`;
+            bData.innerText = `[${data}]`;
+            document.getElementById('labelAddrVal').innerText = addr;
+            document.getElementById('labelDataVal').innerText = data;
+
+            bAddr.className = 'hidden absolute top-0.5 bg-amberaccent text-canvas px-2 py-0.5 font-mono text-[10px] font-bold border border-textmain';
+            bData.className = 'hidden absolute top-0.5 bg-emeraldaccent text-canvas px-2 py-0.5 font-mono text-[10px] font-bold border border-textmain';
+            bCtrl.className = 'hidden absolute top-0.5 bg-textmain text-canvas px-2 py-0.5 font-mono text-[10px] font-bold';
+
+            void bAddr.offsetWidth; // Force Reflow
+
+            if (op === 'read') {
+                bCtrl.innerText = '[MEM_READ]';
+                document.getElementById('labelCtrlVal').innerText = 'MEM_READ';
+                bAddr.classList.remove('hidden'); bAddr.classList.add('anim-bus-east');
+                bCtrl.classList.remove('hidden'); bCtrl.classList.add('anim-bus-east');
+                setTimeout(() => { bData.classList.remove('hidden'); bData.classList.add('anim-bus-west'); }, 600);
+
+                const entry = document.createElement('div');
+                entry.innerText = `[${new Date().toLocaleTimeString()}] BUS READ: CPU -> Address Bus (${addr}) -> RAM Read payload (${data}) -> CPU $EAX.`;
+                log.appendChild(entry);
+            } else if (op === 'write') {
+                bCtrl.innerText = '[MEM_WRITE]';
+                document.getElementById('labelCtrlVal').innerText = 'MEM_WRITE';
+                bAddr.classList.remove('hidden'); bAddr.classList.add('anim-bus-east');
+                bData.classList.remove('hidden'); bData.classList.add('anim-bus-east');
+                bCtrl.classList.remove('hidden'); bCtrl.classList.add('anim-bus-east');
+
+                const entry = document.createElement('div');
+                entry.innerText = `[${new Date().toLocaleTimeString()}] BUS WRITE: CPU -> Payload (${data}) written directly to address ${addr}.`;
+                log.appendChild(entry);
+                if (addr === '0x40A4') document.getElementById('ram-40a4').innerText = data;
+            } else if (op === 'irq') {
+                bCtrl.innerText = '[IRQ_SIGNAL]';
+                document.getElementById('labelCtrlVal').innerText = 'IRQ_1';
+                bCtrl.classList.remove('hidden'); bCtrl.classList.add('anim-bus-west');
+                document.getElementById('unitIrqStatus').innerText = 'ACTIVE (IRQ 1)';
+                document.getElementById('sidebarIrq1').innerText = 'ACTIVE';
+
+                const entry = document.createElement('div');
+                entry.innerText = `[${new Date().toLocaleTimeString()}] HARDWARE IRQ 1: Keyboard controller asserted interrupt line. CPU pausing current execution.`;
+                log.appendChild(entry);
+                setTimeout(() => {
+                    document.getElementById('unitIrqStatus').innerText = 'CLEAR';
+                    document.getElementById('sidebarIrq1').innerText = 'CLEAR';
+                }, 2500);
+            }
+            log.scrollTop = log.scrollHeight;
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 2: CPU SCHEDULING LAB ALGORITHMS & METRICS
+           ------------------------------------------------------------------- */
+        let workloadQueue = [
+            { id: 'P1', at: 0, bt: 6, priority: 2 },
+            { id: 'P2', at: 1, bt: 4, priority: 1 },
+            { id: 'P3', at: 2, bt: 8, priority: 3 },
+            { id: 'P4', at: 3, bt: 3, priority: 2 }
+        ];
+
+        function renderProcessInputRows() {
+            const body = document.getElementById('processInputRows');
+            body.innerHTML = '';
+            workloadQueue.forEach((p, idx) => {
+                body.innerHTML += `
+                    <tr>
+                        <td class="py-1 font-bold text-amberaccent">${p.id}</td>
+                        <td class="py-1"><input type="number" min="0" value="${p.at}" onchange="updateProcessProp(${idx}, 'at', this.value)" class="w-12 bg-panel border border-border p-0.5 text-textmain"></td>
+                        <td class="py-1"><input type="number" min="1" value="${p.bt}" onchange="updateProcessProp(${idx}, 'bt', this.value)" class="w-12 bg-panel border border-border p-0.5 text-textmain"></td>
+                        <td class="py-1"><input type="number" min="1" value="${p.priority}" onchange="updateProcessProp(${idx}, 'priority', this.value)" class="w-12 bg-panel border border-border p-0.5 text-textmain"></td>
+                        <td class="py-1 text-right"><button onclick="deleteProcessRow(${idx})" class="text-textmuted hover:text-amberaccent font-bold">[X]</button></td>
+                    </tr>
+                `;
+            });
+        }
+        renderProcessInputRows();
+
+        function updateProcessProp(idx, key, val) { workloadQueue[idx][key] = parseInt(val) || 0; }
+        function addProcessRow() {
+            workloadQueue.push({ id: `P${workloadQueue.length + 1}`, at: 0, bt: 4, priority: 2 });
+            renderProcessInputRows();
+        }
+        function deleteProcessRow(idx) {
+            workloadQueue.splice(idx, 1);
+            renderProcessInputRows();
+        }
+
+        function handleAlgoChange() {
+            const algo = document.getElementById('schedAlgorithm').value;
+            document.getElementById('quantumInputWrapper').style.display = (algo === 'rr') ? 'block' : 'none';
+        }
+
+        function loadWorkloadPreset(preset) {
+            if (preset === 'convoy') {
+                workloadQueue = [
+                    { id: 'P1', at: 0, bt: 20, priority: 1 },
+                    { id: 'P2', at: 0, bt: 2, priority: 2 },
+                    { id: 'P3', at: 0, bt: 2, priority: 3 }
+                ];
+                document.getElementById('schedAlgorithm').value = 'fcfs';
+            } else if (preset === 'preempt') {
+                workloadQueue = [
+                    { id: 'P1', at: 0, bt: 8, priority: 3 },
+                    { id: 'P2', at: 1, bt: 4, priority: 1 },
+                    { id: 'P3', at: 2, bt: 2, priority: 2 }
+                ];
+                document.getElementById('schedAlgorithm').value = 'priority-p';
+            } else {
+                workloadQueue = [
+                    { id: 'P1', at: 0, bt: 6, priority: 2 },
+                    { id: 'P2', at: 1, bt: 4, priority: 1 },
+                    { id: 'P3', at: 2, bt: 8, priority: 3 }
+                ];
+            }
+            handleAlgoChange();
+            renderProcessInputRows();
+        }
+
+        function runSchedulingLab() {
+            const algo = document.getElementById('schedAlgorithm').value;
+            const quantum = parseInt(document.getElementById('schedQuantum').value) || 2;
+            const plist = JSON.parse(JSON.stringify(workloadQueue));
+            const n = plist.length;
+
+            if (n === 0) return;
+
+            let timeline = [];
+            let currentTime = 0;
+            let completed = 0;
+
+            // Algorithm Dispatch Calculation
+            if (algo === 'fcfs') {
+                plist.sort((a, b) => a.at - b.at);
+                plist.forEach(p => {
+                    if (currentTime < p.at) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: p.at - currentTime });
+                        currentTime = p.at;
+                    }
+                    timeline.push({ id: p.id, start: currentTime, duration: p.bt });
+                    p.ct = currentTime + p.bt;
+                    currentTime += p.bt;
+                });
+            } else if (algo === 'sjf') {
+                let done = Array(n).fill(false);
+                while (completed < n) {
+                    let idx = -1, minBt = Infinity;
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !done[i] && plist[i].bt < minBt) {
+                            minBt = plist[i].bt; idx = i;
+                        }
+                    }
+                    if (idx === -1) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: 1 });
+                        currentTime++;
+                    } else {
+                        timeline.push({ id: plist[idx].id, start: currentTime, duration: plist[idx].bt });
+                        currentTime += plist[idx].bt;
+                        plist[idx].ct = currentTime;
+                        done[idx] = true; completed++;
+                    }
+                }
+            } else {
+                // Round Robin & Default Fallback
+                let remBt = plist.map(p => p.bt);
+                let readyQ = [], visited = Array(n).fill(false);
+                while (completed < n) {
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !visited[i]) { readyQ.push(i); visited[i] = true; }
+                    }
+                    if (readyQ.length === 0) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: 1 });
+                        currentTime++; continue;
+                    }
+                    let curr = readyQ.shift();
+                    let exec = Math.min(quantum, remBt[curr]);
+                    timeline.push({ id: plist[curr].id, start: currentTime, duration: exec });
+                    currentTime += exec; remBt[curr] -= exec;
+
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !visited[i]) { readyQ.push(i); visited[i] = true; }
+                    }
+                    if (remBt[curr] > 0) readyQ.push(curr);
+                    else { plist[curr].ct = currentTime; completed++; }
+                }
+            }
+
+            // Render Industrial Continuous Block Gantt Matrix using SVG Patterns
+            const gantt = document.getElementById('ganttMatrixBar');
+            const ticks = document.getElementById('ganttTimelineTicks');
+            gantt.innerHTML = ''; ticks.innerHTML = '';
+
+            const patterns = ['url(#pat-diagonal)', 'url(#pat-crosshatch)', 'url(#pat-dots)', 'url(#pat-horizontal)', 'url(#pat-vertical)'];
+            let totalTime = 0;
+
+            timeline.forEach((block, idx) => {
+                totalTime += block.duration;
+                const isIdle = block.id === 'IDLE';
+                const pat = isIdle ? 'none' : patterns[idx % patterns.length];
+                const bgStyle = isIdle ? 'background-color: #1C1C22;' : `background-color: #16161A; background-image: ${pat};`;
+
+                gantt.innerHTML += `
+                    <div class="h-full border-r border-border font-mono text-[10px] font-bold text-textmain flex flex-col justify-center items-center shrink-0" style="flex-grow: ${block.duration}; ${bgStyle} min-w-[36px]">
+                        <span class="bg-canvas px-1 border border-border">${block.id}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('lblTotalTimeline').innerText = `Duration: ${totalTime} Ticks`;
+
+            // Render Monospace Time Axis Ticks
+            let accumulated = 0;
+            ticks.innerHTML += `<div class="w-8 text-left font-bold text-amberaccent">T=0</div>`;
+            timeline.forEach(block => {
+                accumulated += block.duration;
+                ticks.innerHTML += `<div class="flex-1 text-right font-bold text-textmuted">T=${accumulated}</div>`;
+            });
+
+            // Calculate Metrics Table
+            let sumWT = 0, sumTAT = 0;
+            const resTable = document.getElementById('schedResultsBody');
+            resTable.innerHTML = '';
+
+            plist.forEach(p => {
+                p.tat = p.ct - p.at;
+                p.wt = p.tat - p.bt;
+                sumWT += p.wt; sumTAT += p.tat;
+
+                resTable.innerHTML += `
+                    <tr>
+                        <td class="py-1 font-bold text-amberaccent">${p.id}</td>
+                        <td class="py-1">${p.at}</td>
+                        <td class="py-1">${p.bt}</td>
+                        <td class="py-1">${p.ct}</td>
+                        <td class="py-1 text-textmain font-bold">${p.tat}</td>
+                        <td class="py-1 text-amberaccent font-bold">${p.wt}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('m-awt').innerText = `${(sumWT / n).toFixed(2)} Ticks`;
+            document.getElementById('m-atat').innerText = `${(sumTAT / n).toFixed(2)} Ticks`;
+            document.getElementById('m-util').innerText = `100.0%`;
+            document.getElementById('m-tput').innerText = `${(n / totalTime).toFixed(2)} / Tick`;
+        }
+
+        function resetSchedulingLab() {
+            document.getElementById('ganttMatrixBar').innerHTML = '<div class="text-textmuted text-xs text-center w-full font-mono">Press [ RUN SIM ] to execute scheduler workload logic.</div>';
+            document.getElementById('ganttTimelineTicks').innerHTML = '';
+            document.getElementById('schedResultsBody').innerHTML = '<tr><td colspan="6" class="py-4 text-center text-textmuted">No active simulation results.</td></tr>';
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 3: 5-STATE PROCESS MACHINE LOGIC
+           ------------------------------------------------------------------- */
+        function advanceProcessState(action) {
+            document.querySelectorAll('#pnode-new, #pnode-ready, #pnode-running, #pnode-waiting, #pnode-terminated').forEach(el => {
+                el.className = 'bg-panel border border-border p-3 space-y-1';
+            });
+
+            const stateVal = document.getElementById('pcbStateVal');
+            if (action === 'admit') {
+                document.getElementById('pnode-ready').className = 'bg-panel border-2 border-amberaccent p-3 space-y-1';
+                stateVal.innerText = 'READY (0x02)';
+            } else if (action === 'dispatch') {
+                document.getElementById('pnode-running').className = 'bg-emeralddark/60 border-2 border-emeraldaccent p-3 space-y-1';
+                stateVal.innerText = 'RUNNING (0x01)';
+            } else if (action === 'wait') {
+                document.getElementById('pnode-waiting').className = 'bg-panel border-2 border-borderlight p-3 space-y-1';
+                stateVal.innerText = 'WAITING (0x03)';
+            } else if (action === 'exit') {
+                document.getElementById('pnode-terminated').className = 'bg-panel border-2 border-border p-3 space-y-1 text-textmuted';
+                stateVal.innerText = 'TERMINATED (0x04)';
+            }
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 4: DUAL MODE & TRAP ENGINE LOGIC
+           ------------------------------------------------------------------- */
+        function triggerTrapCall() {
+            const call = document.getElementById('trapSyscallType').value;
+            const modeBox = document.getElementById('modeBitBox');
+            const modeLbl = document.getElementById('modeBitLabel');
+            const badge = document.getElementById('globalPrivilegeBadge');
+            const log = document.getElementById('trapTraceConsole');
+
+            // Flip Mode Bit to Kernel 0
+            modeBox.innerText = '0';
+            modeBox.className = 'w-8 h-8 bg-amberdark text-amberaccent border border-amberaccent flex items-center justify-center font-bold text-sm';
+            modeLbl.innerText = 'KERNEL MODE (Bit 0 - Privileged Mode Active)';
+            modeLbl.className = 'text-[11px] text-amberaccent font-bold';
+            badge.className = 'bg-amberdark/40 text-amberaccent border border-amberaccent px-2 py-0.5 font-bold flex items-center gap-1.5';
+            badge.innerHTML = '<span class="w-1.5 h-1.5 bg-amberaccent"></span> MODE BIT 0 [KERNEL]';
+
+            const entry = document.createElement('div');
+            entry.innerText = `[${new Date().toLocaleTimeString()}] TRAP: ${call} -> Mode bit flipped to 0 -> Loaded IVT Vector 0x80 -> Kernel Handler Completed -> Returned to User Space (Bit 1).`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+
+            // Restore User Mode 1 after delay
+            setTimeout(() => {
+                modeBox.innerText = '1';
+                modeBox.className = 'w-8 h-8 bg-emeralddark text-emeraldaccent border border-emeraldaccent flex items-center justify-center font-bold text-sm';
+                modeLbl.innerText = 'USER MODE (Bit 1 - Restricted Instructions)';
+                modeLbl.className = 'text-[11px] text-emeraldaccent';
+                badge.className = 'bg-emeralddark/40 text-emeraldaccent border border-emeraldaccent px-2 py-0.5 font-bold flex items-center gap-1.5';
+                badge.innerHTML = '<span class="w-1.5 h-1.5 bg-emeraldaccent"></span> MODE BIT 1 [USER]';
+            }, 1800);
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 5: IPC SIMULATOR LOGIC
+           ------------------------------------------------------------------- */
+        function setIpcMode(mode) {
+            const btnS = document.getElementById('btn-ipc-shared');
+            const btnM = document.getElementById('btn-ipc-msg');
+            const box = document.getElementById('ipcDisplayBox');
+
+            if (mode === 'shared') {
+                btnS.className = 'hw-btn px-3 py-1 bg-amberdark text-textmain border border-amberaccent font-bold';
+                btnM.className = 'hw-btn px-3 py-1 bg-panel text-textmuted border border-border font-bold';
+                box.innerHTML = `
+                    <div class="font-bold text-amberaccent">[SHARED MEMORY SEGMENT: 0x7FFF0000]</div>
+                    <p class="text-[11px] text-textmuted">Process A writes data directly to RAM offset 0x7FFF0000. Process B reads memory location directly without invoking kernel system calls.</p>
+                `;
+            } else {
+                btnM.className = 'hw-btn px-3 py-1 bg-amberdark text-textmain border border-amberaccent font-bold';
+                btnS.className = 'hw-btn px-3 py-1 bg-panel text-textmuted border border-border font-bold';
+                box.innerHTML = `
+                    <div class="font-bold text-textmain">[KERNEL MESSAGE QUEUE #101]</div>
+                    <p class="text-[11px] text-textmuted">Process A calls msgsnd() -> Message copied into Kernel Buffer -> Process B calls msgrcv() to copy message out of Kernel space.</p>
+                `;
+            }
+        }
+        setIpcMode('shared');
+
+        /* -------------------------------------------------------------------
+           GLOBAL & CONTEXTUAL HELP POPUP LOGIC
+           ------------------------------------------------------------------- */
+        const helpDocs = {
+            global: {
+                title: "// OPERATING SYSTEM CONCEPTS MANUAL",
+                body: "Welcome to the Industrial OS Simulator. Use the left navigation panel to switch between Modules. Module 1 models system bus interconnects. Module 2 calculates CPU scheduling metrics. Module 3 details process life cycles and PCB structures. Module 4 demonstrates software TRAPs."
+            },
+            bus: {
+                title: "// HARDWARE SYSTEM BUS GUIDE",
+                body: "The System Bus consists of: 1) Address Bus (transmits target memory locations), 2) Data Bus (transfers byte payloads), and 3) Control Bus (transmits READ, WRITE, and IRQ interrupt command signals)."
+            },
+            scheduling: {
+                title: "// CPU SCHEDULING METRICS FORMULAS",
+                body: "<b>Turnaround Time (TAT):</b> TAT = Completion Time (CT) - Arrival Time (AT)<br><b>Waiting Time (WT):</b> WT = Turnaround Time (TAT) - Burst Time (BT)<br><b>Average Waiting Time (AWT):</b> Sum(WT) / N processes.<br><b>CPU Utilization:</b> (Total Active Execution Time / Total Duration) * 100%"
+            },
+            process: {
+                title: "// PROCESS CONTROL BLOCK (PCB) SPECIFICATION",
+                body: "The PCB is a data structure in kernel memory containing PID, state bits, Program Counter ($PC), Stack Pointer ($SP), CPU register values, and file descriptor tables during context switches."
+            },
+            syscall: {
+                title: "// DUAL-MODE & TRAP SPECIFICATION",
+                body: "Dual-Mode operation enforces hardware protection. User programs run in User Mode (Mode Bit = 1). Requesting kernel routines triggers a software trap (`int 0x80`), which sets Mode Bit to 0 (Kernel Mode) and jumps to the IVT handler address."
+            },
+            ipc: {
+                title: "// INTER-PROCESS COMMUNICATION (IPC)",
+                body: "Shared Memory provides maximum throughput by mapping a common memory segment directly into process address spaces. Message Passing routes messages through kernel queues."
+            }
+        };
+
+        function openHelpModal(key) {
+            const doc = helpDocs[key] || helpDocs['global'];
+            document.getElementById('helpModalTitle').innerText = doc.title;
+            document.getElementById('helpModalBody').innerHTML = doc.body;
+            document.getElementById('globalHelpModal').classList.remove('hidden');
+        }
+        function closeHelpModal() { document.getElementById('globalHelpModal').classList.add('hidden'); }
+    </script>
+</body>
+</html>

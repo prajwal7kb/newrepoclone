@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Web Clock</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .clock-container {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 2.5rem 4rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    #time {
+      font-size: 5rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #38bdf8;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+      margin-bottom: 0.5rem;
+    }
+    #date {
+      font-size: 1.5rem;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="clock-container">
+    <div id="time">00:00:00</div>
+    <div id="date">Loading date...</div>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      
+      // Format Time (HH:MM:SS)
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      // Optional 12-hour or 24-hour toggle (currently 24-hour)
+      const timeString = `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+      document.getElementById('time').textContent = timeString;
+
+      // Format Date
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      document.getElementById('date').textContent = now.toLocaleDateString(undefined, options);
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock(); // Run immediately on load
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C Data Structures & Memory Visualizer Suite</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            slate: {
+              850: '#151e2e',
+              950: '#0b0f17',
+            },
+            neon: {
+              blue: '#38bdf8',
+              cyan: '#22d3ee',
+              green: '#10b981',
+              amber: '#f59e0b',
+              rose: '#f43f5e',
+              purple: '#a855f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    .code-highlight {
+      background-color: rgba(56, 189, 248, 0.15);
+      border-left: 3px solid #38bdf8;
+    }
+
+    .pulse-glow {
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+    
+    .pulse-glow-green {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    }
+
+    .hatching-pattern {
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(239, 68, 68, 0.1),
+        rgba(239, 68, 68, 0.1) 10px,
+        rgba(239, 68, 68, 0.2) 10px,
+        rgba(239, 68, 68, 0.2) 20px
+      );
+    }
+
+    .byte-padding {
+      background: repeating-linear-gradient(
+        135deg,
+        rgba(100, 116, 139, 0.2),
+        rgba(100, 116, 139, 0.2) 6px,
+        rgba(51, 65, 85, 0.4) 6px,
+        rgba(51, 65, 85, 0.4) 12px
+      );
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR NAVIGATION -->
+  <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+    <div class="p-5 border-b border-slate-800 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20">
+        <i class="fa-solid fa-code text-lg"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-sm tracking-wide text-white">C & Data Structures</h1>
+        <p class="text-xs text-cyan-400 font-mono">Exam Visualizer Suite</p>
+      </div>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-1">
+      <button onclick="switchTab('stack')" id="tab-btn-stack" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-layer-group text-slate-400 w-5"></i> 1. Stack Visualizer
+      </button>
+      
+      <button onclick="switchTab('linearQueue')" id="tab-btn-linearQueue" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-right-long text-slate-400 w-5"></i> 2. Linear Queue
+      </button>
+      
+      <button onclick="switchTab('circularQueue')" id="tab-btn-circularQueue" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-arrows-rotate text-slate-400 w-5"></i> 3. Circular Queue
+      </button>
+      
+      <button onclick="switchTab('pointersHeap')" id="tab-btn-pointersHeap" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-memory text-slate-400 w-5"></i> 4. Pointers & Heap (malloc)
+      </button>
+      
+      <button onclick="switchTab('dynamicArray')" id="tab-btn-dynamicArray" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-cubes text-slate-400 w-5"></i> 5. Dynamic Arrays & realloc
+      </button>
+      
+      <button onclick="switchTab('structUnion')" id="tab-btn-structUnion" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-boxes-stacked text-slate-400 w-5"></i> 6. Struct vs Union Alignment
+      </button>
+
+      <button onclick="switchTab('polynomial')" id="tab-btn-polynomial" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-superscript text-slate-400 w-5"></i> 7. Polynomial Representation
+      </button>
+
+      <button onclick="switchTab('sparseMatrix')" id="tab-btn-sparseMatrix" class="nav-tab w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-all text-slate-400 hover:bg-slate-800 hover:text-white">
+        <i class="fa-solid fa-table-cells text-slate-400 w-5"></i> 8. Sparse Matrix & CSR
+      </button>
+    </nav>
+
+    <!-- Exam Tip Box -->
+    <div class="p-4 m-3 rounded-xl bg-slate-850 border border-slate-800 text-xs text-slate-400">
+      <div class="flex items-center gap-2 text-cyan-400 font-semibold mb-1">
+        <i class="fa-solid fa-lightbulb"></i> Exam Ready Mode
+      </div>
+      <p id="exam-tip-text">Master memory layouts, pointers, modulo math, and structural differences for top grades!</p>
+    </div>
+  </aside>
+
+  <!-- MAIN MAIN MAIN CONTENT STAGE -->
+  <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+    
+    <!-- TOP HEADER -->
+    <header class="h-14 border-b border-slate-800 bg-slate-900/50 backdrop-blur px-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span id="module-badge" class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">MODULE 1</span>
+        <h2 id="module-title" class="text-sm font-bold text-white tracking-wide">Stack Data Structure</h2>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="clearGlobalLogs()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">
+          <i class="fa-solid fa-eraser mr-1.5"></i> Clear Console Log
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT BODY (Split Screen: Visualizer Left/Center, Code & Logs Right) -->
+    <div class="flex-1 flex overflow-hidden">
+      
+      <!-- LEFT VISUALIZER STAGE -->
+      <section class="flex-1 p-6 overflow-y-auto flex flex-col space-y-6">
+
+        <!-- ==========================================
+             MODULE 1: STACK VISUALIZER
+        ========================================== -->
+        <div id="module-stack" class="module-panel space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <input type="number" id="stack-input" value="42" placeholder="Value" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-3 py-2 w-28 text-white focus:outline-none focus:border-cyan-500 font-mono">
+              <button onclick="stackPush()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-emerald-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-down-to-line"></i> Push()
+              </button>
+              <button onclick="stackPop()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-rose-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-arrow-up-from-line"></i> Pop()
+              </button>
+              <button onclick="stackPeek()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-amber-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-eye"></i> Peek()
+              </button>
+            </div>
+            
+            <div class="flex items-center gap-3 text-xs">
+              <label class="text-slate-400 font-mono">MAX_SIZE:</label>
+              <select id="stack-max-size" onchange="initStack()" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white focus:outline-none focus:border-cyan-500">
+                <option value="4">4</option>
+                <option value="5" selected>5</option>
+                <option value="6">6</option>
+                <option value="8">8</option>
+              </select>
+              <button onclick="initStack()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg">Reset</button>
+            </div>
+          </div>
+
+          <!-- Visual Display Container -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Stack Graphical Tower -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[340px] relative">
+              <div class="text-xs font-mono text-slate-400 mb-4 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block"></span> LIFO (Last In First Out) Memory Stack
+              </div>
+
+              <div id="stack-container" class="w-48 flex flex-col-reverse border-b-4 border-x-4 border-slate-700 rounded-b-xl bg-slate-950/60 p-2 space-y-reverse space-y-2 relative min-h-[220px]">
+                <!-- Dynamic Stack Items Rendered Here -->
+              </div>
+            </div>
+
+            <!-- Stack Metrics & Status Box -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <i class="fa-solid fa-gauge text-cyan-400"></i> Stack Pointer State
+                </h3>
+                <div class="space-y-4 font-mono text-xs">
+                  <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span class="text-slate-400">top Pointer Index:</span>
+                    <span id="stack-top-val" class="font-bold text-cyan-400 text-sm">-1 (EMPTY)</span>
+                  </div>
+                  <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span class="text-slate-400">Capacity / Size:</span>
+                    <span id="stack-size-val" class="text-white">0 / 5</span>
+                  </div>
+                  <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex justify-between items-center">
+                    <span class="text-slate-400">Status:</span>
+                    <span id="stack-status-tag" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400">IDLE</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 p-3 rounded-lg bg-cyan-950/30 border border-cyan-800/40 text-xs text-cyan-300">
+                <i class="fa-solid fa-circle-info mr-1"></i> Stack overflow occurs when <code>top == MAX_SIZE - 1</code> and Push is called. Underflow occurs when <code>top == -1</code> on Pop.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 2: LINEAR QUEUE VISUALIZER
+        ========================================== -->
+        <div id="module-linearQueue" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <input type="number" id="lqueue-input" value="10" placeholder="Value" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-3 py-2 w-28 text-white focus:outline-none focus:border-cyan-500 font-mono">
+              <button onclick="lqueueEnqueue()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-emerald-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-right-to-bracket"></i> Enqueue()
+              </button>
+              <button onclick="lqueueDequeue()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-rose-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-right-from-bracket"></i> Dequeue()
+              </button>
+              <button onclick="lqueuePeek()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-amber-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-eye"></i> Peek Front
+              </button>
+            </div>
+            
+            <button onclick="initLQueue()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg">Reset Queue</button>
+          </div>
+
+          <!-- Linear Queue Array Visualizer -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-mono text-slate-400">
+                <i class="fa-solid fa-arrow-right-long text-emerald-400 mr-2"></i> FIFO (First In First Out) - Array View
+              </div>
+              <div class="flex gap-4 text-xs font-mono">
+                <span class="text-cyan-400"><i class="fa-solid fa-location-arrow"></i> Front Pointer</span>
+                <span class="text-emerald-400"><i class="fa-solid fa-location-arrow"></i> Rear Pointer</span>
+              </div>
+            </div>
+
+            <!-- Horizontal Slots -->
+            <div id="lqueue-container" class="flex items-center justify-center gap-2 py-8 overflow-x-auto min-h-[160px]">
+              <!-- Rendered via JS -->
+            </div>
+
+            <!-- Limitation Warning Banner -->
+            <div id="lqueue-limitation-box" class="p-4 rounded-xl bg-amber-950/30 border border-amber-800/40 text-xs text-amber-300 flex items-start gap-3">
+              <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
+              <div>
+                <span class="font-bold text-amber-200 block mb-1">Linear Queue Limitation (Exam Essential):</span>
+                Once <code>rear == MAX - 1</code>, no more elements can be enqueued even if elements were dequeued from the front! Dequeued slots become <b>unusable wasted space</b>. Solution: Use Circular Queue with Modulo arithmetic.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 3: CIRCULAR QUEUE VISUALIZER
+        ========================================== -->
+        <div id="module-circularQueue" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <input type="number" id="cqueue-input" value="99" placeholder="Value" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-3 py-2 w-28 text-white focus:outline-none focus:border-cyan-500 font-mono">
+              <button onclick="cqueueEnqueue()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-emerald-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> Enqueue()
+              </button>
+              <button onclick="cqueueDequeue()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-lg transition shadow-lg shadow-rose-900/30 flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> Dequeue()
+              </button>
+            </div>
+            
+            <button onclick="initCQueue()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg">Reset Circular Queue</button>
+          </div>
+
+          <!-- Modulo Math Visualizer Banner -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between font-mono text-xs">
+            <div class="flex items-center gap-2">
+              <span class="text-slate-400">Modulo Formula:</span>
+              <span class="px-2.5 py-1 bg-slate-950 rounded text-cyan-400 font-semibold">new_index = (index + 1) % MAX</span>
+            </div>
+            <div id="cqueue-math-step" class="text-emerald-400 font-semibold bg-slate-950 px-3 py-1 rounded border border-slate-800">
+              rear = (rear + 1) % 5
+            </div>
+          </div>
+
+          <!-- Dual View Stage: Circular Ring + Linear Array View -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Circular Ring SVG View -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[320px] relative">
+              <span class="text-xs font-mono text-slate-400 mb-2">Radial Ring View</span>
+              <svg id="cqueue-svg-ring" width="260" height="260" viewBox="0 0 260 260" class="overflow-visible">
+                <!-- SVG elements dynamically drawn by JS -->
+              </svg>
+            </div>
+
+            <!-- Linear Array Index View -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-mono text-slate-400 block mb-4">Underlying Array View (Indexed 0 to MAX-1)</span>
+                <div id="cqueue-linear-container" class="grid grid-cols-5 gap-2">
+                  <!-- Rendered JS -->
+                </div>
+              </div>
+
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 font-mono text-xs mt-6">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Front Index:</span>
+                  <span id="cqueue-front-val" class="text-cyan-400 font-bold">-1</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Rear Index:</span>
+                  <span id="cqueue-rear-val" class="text-emerald-400 font-bold">-1</span>
+                </div>
+                <div class="flex justify-between border-t border-slate-800 pt-2">
+                  <span class="text-slate-400">Full Check:</span>
+                  <span id="cqueue-full-check" class="text-amber-400">(rear + 1) % MAX == front</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 4: POINTERS & HEAP MEMORY VISUALIZER
+        ========================================== -->
+        <div id="module-pointersHeap" class="module-panel hidden space-y-6">
+          <!-- Control Panel -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center gap-3">
+            <button onclick="heapMalloc()" class="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs rounded-lg transition shadow">
+              <i class="fa-solid fa-plus mr-1"></i> malloc(3 * sizeof(int))
+            </button>
+            <button onclick="heapCalloc()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition shadow">
+              <i class="fa-solid fa-broom-ball mr-1"></i> calloc(4, sizeof(int))
+            </button>
+            <button onclick="heapRealloc()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium text-xs rounded-lg transition shadow">
+              <i class="fa-solid fa-expand mr-1"></i> realloc(ptr1, 5)
+            </button>
+            <button onclick="heapFree()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs rounded-lg transition shadow">
+              <i class="fa-solid fa-trash mr-1"></i> free(ptr1)
+            </button>
+            <button onclick="heapSetNull()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 font-medium text-xs rounded-lg transition">
+              ptr1 = NULL
+            </button>
+            <button onclick="initHeapMemory()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs rounded-lg ml-auto">
+              Reset Memory
+            </button>
+          </div>
+
+          <!-- Stack & Heap Memory Layout View -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- STACK FRAME (Local Variables) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono font-bold text-cyan-400 flex items-center gap-2">
+                  <i class="fa-solid fa-layer-group"></i> STACK FRAME (Local Variables)
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">Fast / Auto Allocation</span>
+              </div>
+
+              <!-- Stack Pointer Variables -->
+              <div class="space-y-3 font-mono text-xs">
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span class="text-cyan-300 font-semibold">int *ptr1</span>
+                    <p class="text-[10px] text-slate-500">Address: 0x7FFE01</p>
+                  </div>
+                  <div class="text-right">
+                    <span id="stack-ptr1-val" class="font-bold text-amber-400">NULL (0x0)</span>
+                    <p id="stack-ptr1-status" class="text-[10px] text-slate-500">Uninitialized</p>
+                  </div>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span class="text-emerald-300 font-semibold">int *ptr2</span>
+                    <p class="text-[10px] text-slate-500">Address: 0x7FFE09</p>
+                  </div>
+                  <div class="text-right">
+                    <span id="stack-ptr2-val" class="font-bold text-amber-400">NULL (0x0)</span>
+                    <p id="stack-ptr2-status" class="text-[10px] text-slate-500">Uninitialized</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- HEAP MEMORY GRID -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+                  <i class="fa-solid fa-memory"></i> HEAP MEMORY GRID
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">Dynamic / Manual Free</span>
+              </div>
+
+              <!-- Heap Blocks Container -->
+              <div id="heap-blocks-container" class="space-y-3 min-h-[160px]">
+                <!-- Dynamic Heap Blocks Rendered Here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Dangling Pointer / Memory Leak Alerts -->
+          <div id="heap-warning-box" class="hidden p-4 rounded-xl bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300 flex items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-rose-400 text-lg"></i>
+            <span id="heap-warning-text">Memory warning message here</span>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 5: DYNAMICALLY ALLOCATED ARRAYS & RESIZING
+        ========================================== -->
+        <div id="module-dynamicArray" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2 text-xs">
+              <label class="text-slate-400 font-mono">Initial Cap:</label>
+              <input type="number" id="dyn-init-cap" value="4" min="2" max="8" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-2.5 py-1.5 w-16 text-white font-mono">
+              <button onclick="dynInit()" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">malloc()</button>
+            </div>
+
+            <div class="h-6 w-px bg-slate-800"></div>
+
+            <div class="flex items-center gap-2 text-xs">
+              <label class="text-slate-400 font-mono">New Cap:</label>
+              <input type="number" id="dyn-realloc-cap" value="7" min="2" max="10" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-2.5 py-1.5 w-16 text-white font-mono">
+              <button onclick="dynRealloc()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg">realloc()</button>
+            </div>
+
+            <div class="h-6 w-px bg-slate-800"></div>
+
+            <div class="flex items-center gap-2 text-xs">
+              <input type="number" id="dyn-val" value="55" placeholder="Val" class="bg-slate-950 border border-slate-700 text-sm rounded-lg px-2.5 py-1.5 w-20 text-white font-mono">
+              <button onclick="dynAppend()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Push Back</button>
+              <button onclick="dynPopBack()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg">Pop Back</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Array Address & Pointer Math Box -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-slate-400">Base Memory Address: <strong class="text-cyan-400">0x6000</strong></span>
+              <span class="text-slate-400">Element Size: <strong class="text-emerald-400">4 Bytes (int)</strong></span>
+              <span class="text-slate-400">Capacity: <strong id="dyn-cap-display" class="text-purple-400">4</strong></span>
+              <span class="text-slate-400">Active Size: <strong id="dyn-size-display" class="text-amber-400">0</strong></span>
+            </div>
+
+            <!-- Dynamic Contiguous Memory Array View -->
+            <div id="dyn-array-container" class="flex flex-wrap items-center justify-start gap-3 py-6 min-h-[140px]">
+              <!-- Rendered JS -->
+            </div>
+
+            <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 flex flex-col md:flex-row justify-between items-center gap-4">
+              <div>
+                <span class="text-slate-500 block text-[10px]">POINTER ARITHMETIC FORMULA:</span>
+                <code>*(arr + i) &equiv; arr[i] &equiv; Address: Base + (i * sizeof(int))</code>
+              </div>
+              <div id="dyn-arithmetic-eval" class="text-cyan-400 font-bold bg-slate-900 px-3 py-2 rounded border border-slate-800">
+                *(0x6000 + 0) = Address 0x6000
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 6: STRUCTURES VS UNIONS
+        ========================================== -->
+        <div id="module-structUnion" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="text-xs font-mono text-slate-400">Preset Struct/Union Example:</span>
+              <select id="su-preset-select" onchange="renderStructUnion()" class="bg-slate-950 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-white font-mono">
+                <option value="ex1">Example 1: { char c; int i; short s; }</option>
+                <option value="ex2">Example 2: { double d; int i; char c; }</option>
+                <option value="ex3">Example 3: { char c1; char c2; int i; }</option>
+              </select>
+            </div>
+
+            <div class="text-xs font-mono text-cyan-400">
+              <i class="fa-solid fa-align-center mr-1"></i> Data Alignment Rules Active
+            </div>
+          </div>
+
+          <!-- Comparison Stage: Struct vs Union Byte Alignment -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- STRUCT MEMORY LAYOUT -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono font-bold text-cyan-400 flex items-center gap-2">
+                  <i class="fa-solid fa-boxes-stacked"></i> struct Data (Sequential Layout)
+                </span>
+                <span id="struct-total-bytes" class="px-2.5 py-1 bg-cyan-950 text-cyan-400 font-mono font-bold rounded text-xs border border-cyan-800">12 Bytes</span>
+              </div>
+              
+              <p class="text-xs text-slate-400">Each member gets its own distinct memory offset. Padding bytes are inserted for memory alignment boundary rules.</p>
+              
+              <!-- Byte Grid -->
+              <div id="struct-byte-grid" class="grid grid-cols-4 gap-2 font-mono text-xs py-2">
+                <!-- Rendered JS -->
+              </div>
+
+              <div id="struct-fields-legend" class="space-y-1.5 text-xs font-mono pt-2 border-t border-slate-800">
+                <!-- Field Legend -->
+              </div>
+            </div>
+
+            <!-- UNION MEMORY LAYOUT -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono font-bold text-rose-400 flex items-center gap-2">
+                  <i class="fa-solid fa-clone"></i> union Data (Shared Memory)
+                </span>
+                <span id="union-total-bytes" class="px-2.5 py-1 bg-rose-950 text-rose-400 font-mono font-bold rounded text-xs border border-rose-800">4 Bytes</span>
+              </div>
+
+              <p class="text-xs text-slate-400">All members share offset 0! Total size equals size of largest member. Updating one overwrites others!</p>
+
+              <!-- Shared Byte Grid -->
+              <div id="union-byte-grid" class="grid grid-cols-4 gap-2 font-mono text-xs py-2">
+                <!-- Rendered JS -->
+              </div>
+
+              <!-- Overwrite Demo Tool -->
+              <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2">
+                <span class="text-[10px] font-mono text-slate-400 block">MODIFY UNION INT MEMBER:</span>
+                <div class="flex gap-2">
+                  <input type="number" id="union-write-int" value="65" class="bg-slate-900 border border-slate-700 text-xs rounded px-2 py-1 w-24 text-white font-mono">
+                  <button onclick="updateUnionInt()" class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-xs font-medium">Write Int</button>
+                </div>
+                <div id="union-overlap-result" class="text-xs font-mono text-amber-400 pt-1">
+                  char c value becomes: 'A' (ASCII 65)
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 7: POLYNOMIAL REPRESENTATION & ADDITION
+        ========================================== -->
+        <div id="module-polynomial" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <button onclick="polyAddStepByStep()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-plus-minus"></i> Add Polynomials (P1 + P2)
+              </button>
+              <button onclick="polyReset()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs">Reset Polynomials</button>
+            </div>
+
+            <div class="flex items-center gap-2 font-mono text-xs">
+              <span class="text-slate-400">Evaluate for x =</span>
+              <input type="number" id="poly-eval-x" value="2" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 w-16 text-white text-center">
+              <button onclick="polyEvaluate()" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs">Calculate</button>
+            </div>
+          </div>
+
+          <!-- Linked List Node Visualizer Stage -->
+          <div class="space-y-6">
+            
+            <!-- Polynomial 1 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold text-cyan-400">Polynomial 1 (P1): <span id="poly1-math-str" class="text-white">5x⁴ + 3x² + 7</span></span>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="p1-coeff" placeholder="Coeff" value="2" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 w-16 font-mono text-white">
+                  <input type="number" id="p1-exp" placeholder="Exp" value="3" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 w-16 font-mono text-white">
+                  <button onclick="polyAddTerm(1)" class="px-2.5 py-1 bg-cyan-700 hover:bg-cyan-600 text-white text-xs rounded font-medium">+ Term</button>
+                </div>
+              </div>
+
+              <!-- Nodes Chain P1 -->
+              <div id="poly1-node-chain" class="flex flex-wrap items-center gap-2 py-3 overflow-x-auto min-h-[70px]">
+                <!-- Rendered JS -->
+              </div>
+            </div>
+
+            <!-- Polynomial 2 -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold text-purple-400">Polynomial 2 (P2): <span id="poly2-math-str" class="text-white">2x⁴ + 4x³ + 1x²</span></span>
+                <div class="flex items-center gap-2">
+                  <input type="number" id="p2-coeff" placeholder="Coeff" value="4" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 w-16 font-mono text-white">
+                  <input type="number" id="p2-exp" placeholder="Exp" value="1" class="bg-slate-950 border border-slate-700 text-xs rounded px-2 py-1 w-16 font-mono text-white">
+                  <button onclick="polyAddTerm(2)" class="px-2.5 py-1 bg-purple-700 hover:bg-purple-600 text-white text-xs rounded font-medium">+ Term</button>
+                </div>
+              </div>
+
+              <!-- Nodes Chain P2 -->
+              <div id="poly2-node-chain" class="flex flex-wrap items-center gap-2 py-3 overflow-x-auto min-h-[70px]">
+                <!-- Rendered JS -->
+              </div>
+            </div>
+
+            <!-- Result Polynomial P3 -->
+            <div class="bg-slate-900 border border-emerald-800/60 rounded-xl p-5 space-y-3 bg-gradient-to-br from-slate-900 to-emerald-950/20">
+              <span class="text-xs font-mono font-bold text-emerald-400">Result Polynomial (P3 = P1 + P2): <span id="poly3-math-str" class="text-white">Click "Add Polynomials"</span></span>
+              <div id="poly3-node-chain" class="flex flex-wrap items-center gap-2 py-3 overflow-x-auto min-h-[70px]">
+                <span class="text-xs text-slate-500 font-mono italic">Result node linked list will render here...</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ==========================================
+             MODULE 8: SPARSE MATRIX & CSR FORMAT
+        ========================================== -->
+        <div id="module-sparseMatrix" class="module-panel hidden space-y-6">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <label class="text-xs font-mono text-slate-400">Grid Size:</label>
+              <select id="sparse-size-select" onchange="initSparseMatrix()" class="bg-slate-950 border border-slate-700 text-xs rounded-lg px-3 py-1.5 text-white font-mono">
+                <option value="4">4 x 4 Matrix</option>
+                <option value="5" selected>5 x 5 Matrix</option>
+              </select>
+              <button onclick="sparseRandomize()" class="px-3.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium">Randomize Sparse Matrix</button>
+            </div>
+            
+            <button onclick="initSparseMatrix()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs">Clear Matrix</button>
+          </div>
+
+          <!-- Dual Stage: 2D Matrix Editor + 3-Tuple & CSR View -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- 2D Dense Matrix Grid Editor -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-mono font-bold text-cyan-400">2D Dense Matrix (Click Cell to Edit)</span>
+                <span id="sparse-density-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Sparsity: 80% Zeroes</span>
+              </div>
+
+              <div id="sparse-matrix-grid" class="grid gap-2 justify-center py-4">
+                <!-- Grid Cells JS -->
+              </div>
+            </div>
+
+            <!-- Triplet & CSR Compact Formats -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-5">
+              
+              <!-- 1. 3-Tuple Representation Table -->
+              <div class="space-y-2">
+                <span class="text-xs font-mono font-bold text-emerald-400 block">1. 3-Tuple (Triplet) Format [Row, Col, Value]</span>
+                <div class="max-h-36 overflow-y-auto border border-slate-800 rounded-lg bg-slate-950 p-2">
+                  <table class="w-full text-left font-mono text-xs">
+                    <thead>
+                      <tr class="text-slate-500 border-b border-slate-800">
+                        <th class="p-1">Row</th>
+                        <th class="p-1">Col</th>
+                        <th class="p-1 text-emerald-400">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sparse-triplet-tbody" class="divide-y divide-slate-800/50">
+                      <!-- Rendered JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 2. CSR Format Arrays -->
+              <div class="space-y-2">
+                <span class="text-xs font-mono font-bold text-purple-400 block">2. Compressed Sparse Row (CSR) Format</span>
+                <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5 font-mono text-[11px]">
+                  <div><span class="text-slate-500">values[]: </span><span id="csr-values" class="text-purple-300">[]</span></div>
+                  <div><span class="text-slate-500">col_ind[]: </span><span id="csr-colind" class="text-cyan-300">[]</span></div>
+                  <div><span class="text-slate-500">row_ptr[]: </span><span id="csr-rowptr" class="text-emerald-300">[]</span></div>
+                </div>
+              </div>
+
+              <!-- 3. Memory Savings Calculator -->
+              <div class="p-3 bg-cyan-950/20 border border-cyan-800/40 rounded-lg flex items-center justify-between font-mono text-xs">
+                <div>
+                  <span class="text-slate-400 text-[10px] block">MEMORY EFFICIENCY SAVED:</span>
+                  <span id="sparse-mem-saved" class="text-cyan-400 font-bold text-sm">45% Memory Saved</span>
+                </div>
+                <i class="fa-solid fa-chart-pie text-cyan-400 text-xl"></i>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT SIDE CODE & EXECUTION LOG PANEL -->
+      <section class="w-96 border-l border-slate-800 bg-slate-900 flex flex-col shrink-0">
+        
+        <!-- C CODE VIEWER TOP -->
+        <div class="flex-1 border-b border-slate-800 flex flex-col min-h-0">
+          <div class="px-4 py-3 border-b border-slate-800 bg-slate-850 flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-code text-cyan-400"></i> C Code & Algorithm Logic
+            </span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-700">ISO C99</span>
+          </div>
+
+          <!-- Code Box -->
+          <div class="flex-1 overflow-y-auto p-4 bg-slate-950 font-mono text-xs text-slate-300 space-y-1 leading-relaxed" id="c-code-viewer">
+            <!-- Dynamically populated by active tab JS -->
+          </div>
+        </div>
+
+        <!-- EXECUTION LOG BOTTOM -->
+        <div class="h-64 flex flex-col bg-slate-950">
+          <div class="px-4 py-2.5 border-b border-slate-800 bg-slate-900 flex items-center justify-between">
+            <span class="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+              <i class="fa-solid fa-terminal"></i> Step Execution Log
+            </span>
+            <span class="text-[10px] font-mono text-slate-500">Real-time Memory Console</span>
+          </div>
+
+          <div id="execution-logs" class="flex-1 p-3 overflow-y-auto font-mono text-[11px] space-y-1.5 text-slate-400">
+            <div class="text-slate-600 italic">[00:00:00] Visualizer suite initialized. Select a module to begin simulation.</div>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+
+  <!-- JAVASCRIPT LOGIC ENGINE -->
+  <script>
+    // ==========================================
+    // GLOBAL APP STATE & SWITCHING
+    // ==========================================
+    let currentTab = 'stack';
+
+    const examTips = {
+      stack: "Stack follows LIFO. Remember: Top is initialized to -1. Check for overflow before push and underflow before pop!",
+      linearQueue: "Linear queue limitation: Rear reaching MAX-1 triggers overflow even if slots at front are empty. Wasted memory space cannot be reused!",
+      circularQueue: "Circular queue solves linear queue limitation using Modulo arithmetic: (rear + 1) % MAX. Full condition: (rear + 1) % MAX == front.",
+      pointersHeap: "malloc leaves memory uninitialized. calloc initializes bytes to zero. free() releases heap block but doesn't set pointer to NULL (dangling pointer risk)!",
+      dynamicArray: "realloc(ptr, new_size) resizes dynamic memory. Pointer arithmetic *(arr + i) calculates byte offset: Base + (i * sizeof(type)).",
+      structUnion: "Struct allocates separate memory for all members + alignment padding bytes. Union shares offset 0 for all members (size = max member size).",
+      polynomial: "Polynomials are stored as sorted linked lists by exponent. Adding polynomials merges terms with matching exponents.",
+      sparseMatrix: "Sparse matrices (mostly 0s) save memory using 3-Tuple [Row, Col, Val] or CSR arrays (values, col_ind, row_ptr)."
+    };
+
+    const cCodeSnippets = {
+      stack: `// C Stack Array Implementation
+#define MAX 5
+int stack[MAX];
+int top = -1;
+
+void push(int val) {
+    if (top == MAX - 1) {
+        printf("Stack Overflow!\\n");
+        return;
+    }
+    stack[++top] = val;
+}
+
+int pop() {
+    if (top == -1) {
+        printf("Stack Underflow!\\n");
+        return -1;
+    }
+    return stack[top--];
+}`,
+      linearQueue: `// C Linear Queue Implementation
+#define MAX 5
+int queue[MAX];
+int front = -1, rear = -1;
+
+void enqueue(int val) {
+    if (rear == MAX - 1) {
+        printf("Queue Full (Wasted memory problem)!\\n");
+        return;
+    }
+    if (front == -1) front = 0;
+    queue[++rear] = val;
+}
+
+int dequeue() {
+    if (front == -1 || front > rear) {
+        printf("Queue Empty!\\n");
+        return -1;
+    }
+    return queue[front++];
+}`,
+      circularQueue: `// C Circular Queue Implementation
+#define MAX 5
+int cqueue[MAX];
+int front = -1, rear = -1;
+
+void enqueue(int val) {
+    if ((rear + 1) % MAX == front) {
+        printf("Circular Queue Full!\\n");
+        return;
+    }
+    if (front == -1) front = rear = 0;
+    else rear = (rear + 1) % MAX;
+    cqueue[rear] = val;
+}
+
+int dequeue() {
+    if (front == -1) return -1;
+    int item = cqueue[front];
+    if (front == rear) front = rear = -1;
+    else front = (front + 1) % MAX;
+    return item;
+}`,
+      pointersHeap: `// Dynamic Memory Allocation in C
+int *ptr1 = (int*) malloc(3 * sizeof(int));
+// ptr1 points to heap block e.g. 0x5010
+
+int *ptr2 = (int*) calloc(4, sizeof(int));
+// ptr2 points to zero-initialized block e.g. 0x5028
+
+ptr1 = (int*) realloc(ptr1, 5 * sizeof(int));
+// Expands heap block size
+
+free(ptr1);
+ptr1 = NULL; // Prevents Dangling Pointer!`,
+      dynamicArray: `// Dynamically Growing Array in C
+int capacity = 4, size = 0;
+int *arr = (int*) malloc(capacity * sizeof(int));
+
+// Accessing element via pointer arithmetic:
+int val = *(arr + index); // equivalent to arr[index]
+
+// Address calculation:
+// Address = Base_Address + (index * sizeof(int))`,
+      structUnion: `// Struct vs Union Memory Layout
+struct DataStruct {
+    char c;   // 1 byte (+ 3 padding)
+    int i;    // 4 bytes
+    short s;  // 2 bytes (+ 2 padding)
+}; // Total sizeof = 12 Bytes
+
+union DataUnion {
+    char c;   // 1 byte
+    int i;    // 4 bytes
+    double d; // 8 bytes
+}; // Total sizeof = 8 Bytes (Shared Memory)`,
+      polynomial: `// Polynomial Term Linked List Node
+struct Node {
+    int coeff;
+    int exp;
+    struct Node* next;
+};
+
+void addPolynomials(struct Node* p1, struct Node* p2) {
+    while (p1 != NULL && p2 != NULL) {
+        if (p1->exp == p2->exp) {
+            insertNode(p1->coeff + p2->coeff, p1->exp);
+            p1 = p1->next; p2 = p2->next;
+        } else if (p1->exp > p2->exp) {
+            insertNode(p1->coeff, p1->exp); p1 = p1->next;
+        } else {
+            insertNode(p2->coeff, p2->exp); p2 = p2->next;
+        }
+    }
+}`,
+      sparseMatrix: `// Sparse Matrix Representations
+// 1. 3-Tuple Representation Struct
+typedef struct {
+    int row;
+    int col;
+    int val;
+} Triplet;
+
+// 2. CSR (Compressed Sparse Row) Format:
+// values[]   : stores non-zero elements
+// col_ind[]  : stores column index of elements
+// row_ptr[]  : stores start index of each row`
+    };
+
+    function switchTab(tabId) {
+      currentTab = tabId;
+      
+      // Update sidebar nav state
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'border-r-2', 'border-cyan-400');
+        btn.classList.add('text-slate-400');
+      });
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-white', 'border-r-2', 'border-cyan-400');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      // Hide all module panels & show active
+      document.querySelectorAll('.module-panel').forEach(panel => panel.classList.add('hidden'));
+      const activePanel = document.getElementById(`module-${tabId}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+
+      // Update titles, exam tips, and C Code
+      const titles = {
+        stack: "Module 1: Stack Data Structure & Operations",
+        linearQueue: "Module 2: Linear Queue & Memory Limitation Visualizer",
+        circularQueue: "Module 3: Circular Queue & Modulo Math Visualizer",
+        pointersHeap: "Module 4: Pointers & Heap Memory (malloc/calloc/realloc/free)",
+        dynamicArray: "Module 5: Dynamically Allocated Arrays & Pointer Arithmetic",
+        structUnion: "Module 6: Structures vs Unions Memory Layout & Alignment",
+        polynomial: "Module 7: Polynomial Linked List Representation & Addition",
+        sparseMatrix: "Module 8: Sparse Matrix 2D to 3-Tuple & CSR Format"
+      };
+
+      document.getElementById('module-title').innerText = titles[tabId] || "C Visualizer Module";
+      document.getElementById('module-badge').innerText = `MODULE ${tabId.toUpperCase()}`;
+      document.getElementById('exam-tip-text').innerText = examTips[tabId] || "";
+      document.getElementById('c-code-viewer').innerText = cCodeSnippets[tabId] || "";
+
+      logMessage(`Switched to ${titles[tabId]}`);
+    }
+
+    function logMessage(msg, type = 'info') {
+      const logsContainer = document.getElementById('execution-logs');
+      const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      
+      let colorClass = 'text-slate-400';
+      let icon = '<i class="fa-solid fa-angle-right text-slate-500 mr-1.5"></i>';
+
+      if (type === 'success') {
+        colorClass = 'text-emerald-400';
+        icon = '<i class="fa-solid fa-check text-emerald-500 mr-1.5"></i>';
+      } else if (type === 'warn') {
+        colorClass = 'text-amber-400';
+        icon = '<i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1.5"></i>';
+      } else if (type === 'error') {
+        colorClass = 'text-rose-400';
+        icon = '<i class="fa-solid fa-circle-xmark text-rose-500 mr-1.5"></i>';
+      } else if (type === 'action') {
+        colorClass = 'text-cyan-300';
+        icon = '<i class="fa-solid fa-gear text-cyan-400 mr-1.5"></i>';
+      }
+
+      const logItem = document.createElement('div');
+      logItem.className = `${colorClass} flex items-start text-[11px] leading-relaxed`;
+      logItem.innerHTML = `<span class="text-slate-600 mr-2 shrink-0">[${timeStr}]</span> <span>${icon}${msg}</span>`;
+      
+      logsContainer.appendChild(logItem);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    function clearGlobalLogs() {
+      document.getElementById('execution-logs').innerHTML = `<div class="text-slate-600 italic">[${new Date().toLocaleTimeString()}] Console logs cleared.</div>`;
+    }
+
+    // ==========================================
+    // MODULE 1: STACK LOGIC
+    // ==========================================
+    let stack = [];
+    let stackMaxSize = 5;
+
+    function initStack() {
+      stackMaxSize = parseInt(document.getElementById('stack-max-size').value);
+      stack = [];
+      renderStack();
+      logMessage(`Initialized Stack with MAX_SIZE = ${stackMaxSize}`);
+    }
+
+    function renderStack() {
+      const container = document.getElementById('stack-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < stackMaxSize; i++) {
+        const slot = document.createElement('div');
+        const isTop = (i === stack.length - 1 && stack.length > 0);
+        const hasVal = i < stack.length;
+
+        slot.className = `w-full h-10 rounded-lg border flex items-center justify-between px-4 text-xs font-mono transition-all duration-300 ${
+          hasVal 
+            ? isTop 
+              ? 'bg-gradient-to-r from-cyan-600 to-blue-600 border-cyan-400 text-white font-bold pulse-glow shadow-lg' 
+              : 'bg-slate-800 border-slate-700 text-slate-200' 
+            : 'bg-slate-900/40 border-slate-800/80 text-slate-600 border-dashed'
+        }`;
+
+        slot.innerHTML = `
+          <span class="text-[10px] text-slate-500">Index [${i}]</span>
+          <span class="text-sm font-bold">${hasVal ? stack[i] : ''}</span>
+          ${isTop ? '<span class="px-1.5 py-0.5 rounded text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-500/40">TOP</span>' : '<span class="w-8"></span>'}
+        `;
+
+        container.appendChild(slot);
+      }
+
+      // Update metrics
+      const topIdx = stack.length - 1;
+      document.getElementById('stack-top-val').innerText = topIdx >= 0 ? `${topIdx} (Value: ${stack[topIdx]})` : '-1 (EMPTY)';
+      document.getElementById('stack-size-val').innerText = `${stack.length} / ${stackMaxSize}`;
+
+      const statusTag = document.getElementById('stack-status-tag');
+      if (stack.length === 0) {
+        statusTag.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-400';
+        statusTag.innerText = 'EMPTY (Underflow State)';
+      } else if (stack.length === stackMaxSize) {
+        statusTag.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-800';
+        statusTag.innerText = 'FULL (Overflow State)';
+      } else {
+        statusTag.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-400 border border-cyan-800';
+        statusTag.innerText = 'NORMAL';
+      }
+    }
+
+    function stackPush() {
+      const valInput = document.getElementById('stack-input');
+      const val = parseInt(valInput.value) || Math.floor(Math.random() * 90) + 10;
+
+      if (stack.length >= stackMaxSize) {
+        logMessage(`STACK OVERFLOW! Cannot push ${val}. top (${stack.length - 1}) == MAX_SIZE - 1`, 'error');
+        return;
+      }
+
+      stack.push(val);
+      renderStack();
+      logMessage(`Push(${val}) success. Incremented top = ${stack.length - 1}, stack[${stack.length - 1}] = ${val}`, 'success');
+      valInput.value = Math.floor(Math.random() * 90) + 10;
+    }
+
+    function stackPop() {
+      if (stack.length === 0) {
+        logMessage(`STACK UNDERFLOW! Cannot pop element. top == -1`, 'error');
+        return;
+      }
+
+      const popped = stack.pop();
+      renderStack();
+      logMessage(`Pop() success. Removed value ${popped}. Decremented top = ${stack.length - 1}`, 'warn');
+    }
+
+    function stackPeek() {
+      if (stack.length === 0) {
+        logMessage(`Peek failed: Stack is empty (top == -1)`, 'error');
+        return;
+      }
+      logMessage(`Peek(): Top element at index [${stack.length - 1}] is ${stack[stack.length - 1]}`, 'action');
+    }
+
+    // ==========================================
+    // MODULE 2: LINEAR QUEUE LOGIC
+    // ==========================================
+    let lqueue = [];
+    const lqueueMax = 5;
+    let lfront = -1;
+    let lrear = -1;
+
+    function initLQueue() {
+      lqueue = new Array(lqueueMax).fill(null);
+      lfront = -1;
+      lrear = -1;
+      renderLQueue();
+      logMessage(`Initialized Linear Queue of size ${lqueueMax}`);
+    }
+
+    function renderLQueue() {
+      const container = document.getElementById('lqueue-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < lqueueMax; i++) {
+        const val = lqueue[i];
+        const isWasted = (lfront > i && i <= lrear) || (lfront > lrear && lrear !== -1 && i < lfront);
+        const isFront = (i === lfront && val !== null);
+        const isRear = (i === lrear && val !== null);
+
+        const slot = document.createElement('div');
+        slot.className = `w-20 h-24 rounded-xl border flex flex-col justify-between p-2 font-mono text-xs relative transition-all duration-300 ${
+          isWasted 
+            ? 'bg-rose-950/30 border-rose-800/60 text-rose-400 hatching-pattern' 
+            : val !== null 
+              ? 'bg-slate-800 border-cyan-500/50 text-white shadow-md' 
+              : 'bg-slate-950 border-slate-800 text-slate-600'
+        }`;
+
+        slot.innerHTML = `
+          <div class="flex justify-between items-center text-[10px] text-slate-500 border-b border-slate-700/50 pb-1">
+            <span>[${i}]</span>
+            ${isWasted ? '<span class="text-[9px] text-rose-400 font-bold">WASTED</span>' : ''}
+          </div>
+          
+          <div class="text-center font-bold text-base py-1 ${val !== null ? 'text-cyan-300' : 'text-slate-700'}">
+            ${val !== null ? val : 'NULL'}
+          </div>
+
+          <div class="flex flex-col gap-1 text-[9px]">
+            ${isFront ? '<span class="bg-cyan-950 text-cyan-300 border border-cyan-500/40 rounded px-1 text-center font-bold">FRONT</span>' : ''}
+            ${isRear ? '<span class="bg-emerald-950 text-emerald-300 border border-emerald-500/40 rounded px-1 text-center font-bold">REAR</span>' : ''}
+          </div>
+        `;
+
+        container.appendChild(slot);
+      }
+    }
+
+    function lqueueEnqueue() {
+      const input = document.getElementById('lqueue-input');
+      const val = parseInt(input.value) || Math.floor(Math.random() * 90) + 10;
+
+      if (lrear === lqueueMax - 1) {
+        logMessage(`LINEAR QUEUE OVERFLOW! Cannot enqueue ${val}. rear (${lrear}) == MAX-1. Wasted space at front cannot be reused!`, 'error');
+        document.getElementById('lqueue-limitation-box').classList.add('pulse-glow');
+        setTimeout(() => document.getElementById('lqueue-limitation-box').classList.remove('pulse-glow'), 1500);
+        return;
+      }
+
+      if (lfront === -1) lfront = 0;
+      lrear++;
+      lqueue[lrear] = val;
+
+      renderLQueue();
+      logMessage(`Enqueue(${val}) success. Incremented rear = ${lrear}, queue[${lrear}] = ${val}`, 'success');
+      input.value = Math.floor(Math.random() * 90) + 10;
+    }
+
+    function lqueueDequeue() {
+      if (lfront === -1 || lfront > lrear) {
+        logMessage(`LINEAR QUEUE UNDERFLOW! Cannot dequeue. Queue is Empty.`, 'error');
+        return;
+      }
+
+      const val = lqueue[lfront];
+      lqueue[lfront] = null; // Mark slot as dequeued/wasted
+      logMessage(`Dequeue() success. Removed value ${val} at front [${lfront}]. Slot [${lfront}] is now wasted space!`, 'warn');
+      
+      lfront++;
+      if (lfront > lrear) {
+        // Reset if empty
+        lfront = -1;
+        lrear = -1;
+        logMessage(`Queue became completely empty. Reset front = rear = -1.`, 'action');
+      }
+
+      renderLQueue();
+    }
+
+    function lqueuePeek() {
+      if (lfront === -1 || lfront > lrear) {
+        logMessage(`Peek failed: Linear queue is empty`, 'error');
+        return;
+      }
+      logMessage(`Peek Front: Element at front index [${lfront}] is ${lqueue[lfront]}`, 'action');
+    }
+
+    // ==========================================
+    // MODULE 3: CIRCULAR QUEUE LOGIC
+    // ==========================================
+    let cqueue = [];
+    const cqueueMax = 5;
+    let cfront = -1;
+    let crear = -1;
+
+    function initCQueue() {
+      cqueue = new Array(cqueueMax).fill(null);
+      cfront = -1;
+      crear = -1;
+      renderCQueue();
+      logMessage(`Initialized Circular Queue with MAX = ${cqueueMax}`);
+    }
+
+    function renderCQueue() {
+      // 1. Render SVG Ring
+      const svg = document.getElementById('cqueue-svg-ring');
+      svg.innerHTML = '';
+      
+      const cx = 130, cy = 130, r = 85;
+      
+      // Draw background ring circle
+      const bgCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      bgCircle.setAttribute("cx", cx);
+      bgCircle.setAttribute("cy", cy);
+      bgCircle.setAttribute("r", r);
+      bgCircle.setAttribute("fill", "none");
+      bgCircle.setAttribute("stroke", "#1e293b");
+      bgCircle.setAttribute("stroke-width", "36");
+      svg.appendChild(bgCircle);
+
+      for (let i = 0; i < cqueueMax; i++) {
+        const angle = (i / cqueueMax) * (2 * Math.PI) - Math.PI / 2;
+        const x = cx + r * Math.cos(angle);
+        const y = cy + r * Math.sin(angle);
+
+        const isFront = (i === cfront && cqueue[i] !== null);
+        const isRear = (i === crear && cqueue[i] !== null);
+        const hasVal = (cqueue[i] !== null);
+
+        // Slot node circle
+        const nodeCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        nodeCircle.setAttribute("cx", x);
+        nodeCircle.setAttribute("cy", y);
+        nodeCircle.setAttribute("r", "22");
+        nodeCircle.setAttribute("fill", hasVal ? (isFront && isRear ? "#0284c7" : isFront ? "#0891b2" : isRear ? "#059669" : "#334155") : "#0f172a");
+        nodeCircle.setAttribute("stroke", isFront ? "#38bdf8" : isRear ? "#34d399" : "#475569");
+        nodeCircle.setAttribute("stroke-width", "2.5");
+        svg.appendChild(nodeCircle);
+
+        // Slot text
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", x);
+        text.setAttribute("y", y + 4);
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("fill", hasVal ? "#ffffff" : "#64748b");
+        text.setAttribute("font-size", "12");
+        text.setAttribute("font-family", "JetBrains Mono");
+        text.setAttribute("font-weight", "bold");
+        text.textContent = hasVal ? cqueue[i] : `[${i}]`;
+        svg.appendChild(text);
+      }
+
+      // Center Text inside Ring
+      const centerText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      centerText.setAttribute("x", cx);
+      centerText.setAttribute("y", cy + 4);
+      centerText.setAttribute("text-anchor", "middle");
+      centerText.setAttribute("fill", "#94a3b8");
+      centerText.setAttribute("font-size", "11");
+      centerText.setAttribute("font-family", "JetBrains Mono");
+      centerText.textContent = `Ring MAX=${cqueueMax}`;
+      svg.appendChild(centerText);
+
+      // 2. Render Linear Array View
+      const linearContainer = document.getElementById('cqueue-linear-container');
+      linearContainer.innerHTML = '';
+      for (let i = 0; i < cqueueMax; i++) {
+        const val = cqueue[i];
+        const isFront = (i === cfront && val !== null);
+        const isRear = (i === crear && val !== null);
+
+        const slot = document.createElement('div');
+        slot.className = `p-2 rounded-lg border font-mono text-xs flex flex-col justify-between items-center h-20 ${
+          val !== null 
+            ? 'bg-slate-800 border-cyan-500/40 text-white' 
+            : 'bg-slate-950 border-slate-800 text-slate-600'
+        }`;
+        slot.innerHTML = `
+          <span class="text-[9px] text-slate-500">[${i}]</span>
+          <span class="font-bold text-sm text-cyan-300">${val !== null ? val : '-'}</span>
+          <div class="flex gap-1 text-[8px]">
+            ${isFront ? '<span class="text-cyan-400 font-bold">F</span>' : ''}
+            ${isRear ? '<span class="text-emerald-400 font-bold">R</span>' : ''}
+          </div>
+        `;
+        linearContainer.appendChild(slot);
+      }
+
+      // Metrics
+      document.getElementById('cqueue-front-val').innerText = cfront;
+      document.getElementById('cqueue-rear-val').innerText = crear;
+      document.getElementById('cqueue-full-check').innerText = `(${crear} + 1) % ${cqueueMax} == ${cfront} -> ${(crear + 1) % cqueueMax === cfront ? 'TRUE (FULL)' : 'FALSE'}`;
+    }
+
+    function cqueueEnqueue() {
+      const input = document.getElementById('cqueue-input');
+      const val = parseInt(input.value) || Math.floor(Math.random() * 90) + 10;
+
+      if ((crear + 1) % cqueueMax === cfront) {
+        logMessage(`CIRCULAR QUEUE FULL! (rear + 1) % MAX == front. Cannot enqueue ${val}.`, 'error');
+        return;
+      }
+
+      if (cfront === -1) {
+        cfront = 0;
+        crear = 0;
+      } else {
+        const nextRear = (crear + 1) % cqueueMax;
+        document.getElementById('cqueue-math-step').innerText = `rear = (${crear} + 1) % ${cqueueMax} = ${nextRear}`;
+        crear = nextRear;
+      }
+
+      cqueue[crear] = val;
+      renderCQueue();
+      logMessage(`Circular Enqueue(${val}): rear set to (${crear}). cqueue[${crear}] = ${val}`, 'success');
+      input.value = Math.floor(Math.random() * 90) + 10;
+    }
+
+    function cqueueDequeue() {
+      if (cfront === -1) {
+        logMessage(`CIRCULAR QUEUE UNDERFLOW! Queue is empty.`, 'error');
+        return;
+      }
+
+      const val = cqueue[cfront];
+      cqueue[cfront] = null;
+
+      if (cfront === crear) {
+        cfront = -1;
+        crear = -1;
+        logMessage(`Dequeued last element (${val}). Reset front = rear = -1`, 'warn');
+      } else {
+        const nextFront = (cfront + 1) % cqueueMax;
+        document.getElementById('cqueue-math-step').innerText = `front = (${cfront} + 1) % ${cqueueMax} = ${nextFront}`;
+        logMessage(`Dequeued element ${val} from front [${cfront}]. New front = ${nextFront}`, 'warn');
+        cfront = nextFront;
+      }
+
+      renderCQueue();
+    }
+
+    // ==========================================
+    // MODULE 4: POINTERS & HEAP MEMORY LOGIC
+    // ==========================================
+    let heapBlocks = [];
+
+    function initHeapMemory() {
+      heapBlocks = [];
+      document.getElementById('stack-ptr1-val').innerText = 'NULL (0x0)';
+      document.getElementById('stack-ptr1-status').innerText = 'Uninitialized';
+      document.getElementById('stack-ptr2-val').innerText = 'NULL (0x0)';
+      document.getElementById('stack-ptr2-status').innerText = 'Uninitialized';
+      document.getElementById('heap-warning-box').classList.add('hidden');
+      renderHeap();
+      logMessage(`Heap and Stack memory reset.`);
+    }
+
+    function renderHeap() {
+      const container = document.getElementById('heap-blocks-container');
+      container.innerHTML = '';
+
+      if (heapBlocks.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-600 font-mono italic text-center py-6 border border-dashed border-slate-800 rounded-lg">Heap memory is currently empty. Allocate using malloc() or calloc().</div>`;
+        return;
+      }
+
+      heapBlocks.forEach(block => {
+        const blockDiv = document.createElement('div');
+        blockDiv.className = `p-3 rounded-lg border font-mono text-xs transition-all ${
+          block.freed 
+            ? 'bg-rose-950/20 border-rose-800/40 text-rose-400 hatching-pattern' 
+            : 'bg-slate-950 border-emerald-500/40 text-slate-200 shadow-md'
+        }`;
+
+        let valBoxes = '';
+        block.values.forEach((v, idx) => {
+          valBoxes += `<span class="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-cyan-300 font-bold">${v}</span>`;
+        });
+
+        blockDiv.innerHTML = `
+          <div class="flex justify-between items-center text-[10px] text-slate-400 mb-2">
+            <span>Base Addr: <strong class="text-emerald-400">${block.address}</strong></span>
+            <span>Size: ${block.sizeBytes} Bytes (${block.count} ints)</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${block.freed ? 'bg-rose-950 text-rose-400' : 'bg-emerald-950 text-emerald-400'}">${block.freed ? 'FREED' : 'ALLOCATED'}</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] text-slate-500">Values:</span> ${valBoxes}
+          </div>
+        `;
+        container.appendChild(blockDiv);
+      });
+    }
+
+    function heapMalloc() {
+      const addr = "0x5010";
+      // Remove existing block at 0x5010 if any
+      heapBlocks = heapBlocks.filter(b => b.address !== addr);
+      
+      heapBlocks.push({
+        address: addr,
+        count: 3,
+        sizeBytes: 12,
+        values: [15, 42, 88],
+        freed: false
+      });
+
+      document.getElementById('stack-ptr1-val').innerText = addr;
+      document.getElementById('stack-ptr1-val').className = 'font-bold text-cyan-400';
+      document.getElementById('stack-ptr1-status').innerText = 'Points to Heap 0x5010';
+
+      renderHeap();
+      logMessage(`malloc(3 * sizeof(int)) allocated 12 bytes at heap address 0x5010. Assigned ptr1 = 0x5010.`, 'success');
+    }
+
+    function heapCalloc() {
+      const addr = "0x5028";
+      heapBlocks = heapBlocks.filter(b => b.address !== addr);
+
+      heapBlocks.push({
+        address: addr,
+        count: 4,
+        sizeBytes: 16,
+        values: [0, 0, 0, 0],
+        freed: false
+      });
+
+      document.getElementById('stack-ptr2-val').innerText = addr;
+      document.getElementById('stack-ptr2-val').className = 'font-bold text-emerald-400';
+      document.getElementById('stack-ptr2-status').innerText = 'Points to Heap 0x5028';
+
+      renderHeap();
+      logMessage(`calloc(4, sizeof(int)) allocated 16 bytes at 0x5028 initialized to zeros. Assigned ptr2 = 0x5028.`, 'success');
+    }
+
+    function heapRealloc() {
+      const block = heapBlocks.find(b => b.address === "0x5010" && !b.freed);
+      if (!block) {
+        logMessage(`realloc failed: ptr1 (0x5010) is not allocated or already freed!`, 'error');
+        return;
+      }
+
+      block.count = 5;
+      block.sizeBytes = 20;
+      block.values = [15, 42, 88, 100, 200];
+
+      renderHeap();
+      logMessage(`realloc(ptr1, 5 * sizeof(int)) expanded block at 0x5010 to 20 bytes (5 elements).`, 'action');
+    }
+
+    function heapFree() {
+      const block = heapBlocks.find(b => b.address === "0x5010" && !b.freed);
+      if (!block) {
+        logMessage(`free(ptr1) failed: Memory at 0x5010 is not active!`, 'error');
+        return;
+      }
+
+      block.freed = true;
+      renderHeap();
+      logMessage(`free(ptr1): Heap block at 0x5010 deallocated!`, 'warn');
+
+      // Check Dangling Pointer Warning
+      const ptr1Val = document.getElementById('stack-ptr1-val').innerText;
+      if (ptr1Val === "0x5010") {
+        const warnBox = document.getElementById('heap-warning-box');
+        warnBox.classList.remove('hidden');
+        document.getElementById('heap-warning-text').innerHTML = `<strong>DANGLING POINTER WARNING:</strong> <code>ptr1</code> still holds address <code>0x5010</code> which points to freed heap memory! Fix: Set <code>ptr1 = NULL</code> immediately after freeing!`;
+        logMessage(`DANGLING POINTER DETECTED! ptr1 points to deallocated memory address 0x5010!`, 'error');
+      }
+    }
+
+    function heapSetNull() {
+      document.getElementById('stack-ptr1-val').innerText = 'NULL (0x0)';
+      document.getElementById('stack-ptr1-val').className = 'font-bold text-amber-400';
+      document.getElementById('stack-ptr1-status').innerText = 'Safe (NULL)';
+      document.getElementById('heap-warning-box').classList.add('hidden');
+      logMessage(`Assigned ptr1 = NULL. Dangling pointer hazard eliminated.`, 'success');
+    }
+
+    // ==========================================
+    // MODULE 5: DYNAMICALLY ALLOCATED ARRAYS LOGIC
+    // ==========================================
+    let dynArray = [];
+    let dynCap = 4;
+    const dynBaseAddr = 0x6000;
+
+    function dynInit() {
+      dynCap = parseInt(document.getElementById('dyn-init-cap').value) || 4;
+      dynArray = [12, 34, 56];
+      renderDynArray();
+      logMessage(`Allocated dynamic array with initial capacity = ${dynCap} via malloc()`);
+    }
+
+    function dynRealloc() {
+      dynCap = parseInt(document.getElementById('dyn-realloc-cap').value) || 7;
+      renderDynArray();
+      logMessage(`Resized dynamic array capacity to ${dynCap} via realloc()`, 'action');
+    }
+
+    function dynAppend() {
+      const val = parseInt(document.getElementById('dyn-val').value) || 99;
+      if (dynArray.length >= dynCap) {
+        logMessage(`Array capacity limit (${dynCap}) reached! Call realloc() to expand capacity before inserting!`, 'warn');
+        return;
+      }
+      dynArray.push(val);
+      renderDynArray();
+      logMessage(`Pushed element ${val} at index [${dynArray.length - 1}]. Pointer expr: *(arr + ${dynArray.length - 1})`, 'success');
+    }
+
+    function dynPopBack() {
+      if (dynArray.length === 0) {
+        logMessage(`Array is empty! Cannot pop element.`, 'error');
+        return;
+      }
+      const popped = dynArray.pop();
+      renderDynArray();
+      logMessage(`Popped element ${popped} from dynamic array.`, 'warn');
+    }
+
+    function renderDynArray() {
+      const container = document.getElementById('dyn-array-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < dynCap; i++) {
+        const hasVal = i < dynArray.length;
+        const addrHex = "0x" + (dynBaseAddr + i * 4).toString(16).toUpperCase();
+
+        const slot = document.createElement('div');
+        slot.className = `w-28 h-28 rounded-xl border flex flex-col justify-between p-2.5 font-mono text-xs transition-all ${
+          hasVal 
+            ? 'bg-slate-800 border-cyan-500/50 text-white shadow-md' 
+            : 'bg-slate-950/60 border-slate-800 text-slate-600 border-dashed'
+        }`;
+
+        slot.innerHTML = `
+          <div class="flex justify-between text-[10px] text-slate-500">
+            <span>[${i}]</span>
+            <span class="text-cyan-400 font-bold">${addrHex}</span>
+          </div>
+
+          <div class="text-center font-bold text-base text-emerald-300">
+            ${hasVal ? dynArray[i] : 'Unused'}
+          </div>
+
+          <div class="text-[9px] text-slate-400 text-center bg-slate-900 rounded py-0.5 border border-slate-800">
+            *(arr + ${i})
+          </div>
+        `;
+
+        container.appendChild(slot);
+      }
+
+      document.getElementById('dyn-cap-display').innerText = dynCap;
+      document.getElementById('dyn-size-display').innerText = dynArray.length;
+
+      if (dynArray.length > 0) {
+        const lastIdx = dynArray.length - 1;
+        const lastAddr = "0x" + (dynBaseAddr + lastIdx * 4).toString(16).toUpperCase();
+        document.getElementById('dyn-arithmetic-eval').innerText = `*(0x6000 + ${lastIdx}) = Value ${dynArray[lastIdx]} at Address ${lastAddr}`;
+      }
+    }
+
+    // ==========================================
+    // MODULE 6: STRUCT VS UNION ALIGNMENT LOGIC
+    // ==========================================
+    function renderStructUnion() {
+      const preset = document.getElementById('su-preset-select').value;
+      const structGrid = document.getElementById('struct-byte-grid');
+      const unionGrid = document.getElementById('union-byte-grid');
+      const legend = document.getElementById('struct-fields-legend');
+
+      structGrid.innerHTML = '';
+      unionGrid.innerHTML = '';
+      legend.innerHTML = '';
+
+      let fields = [];
+      if (preset === 'ex1') {
+        fields = [
+          { name: 'c (char)', size: 1, color: 'bg-cyan-600 text-white' },
+          { name: 'i (int)', size: 4, color: 'bg-emerald-600 text-white' },
+          { name: 's (short)', size: 2, color: 'bg-purple-600 text-white' }
+        ];
+      } else if (preset === 'ex2') {
+        fields = [
+          { name: 'd (double)', size: 8, color: 'bg-amber-600 text-white' },
+          { name: 'i (int)', size: 4, color: 'bg-emerald-600 text-white' },
+          { name: 'c (char)', size: 1, color: 'bg-cyan-600 text-white' }
+        ];
+      } else {
+        fields = [
+          { name: 'c1 (char)', size: 1, color: 'bg-cyan-600 text-white' },
+          { name: 'c2 (char)', size: 1, color: 'bg-rose-600 text-white' },
+          { name: 'i (int)', size: 4, color: 'bg-emerald-600 text-white' }
+        ];
+      }
+
+      // Calculate Struct Alignment Layout
+      let currentOffset = 0;
+      let maxAlign = 1;
+      let byteMap = [];
+
+      fields.forEach(field => {
+        maxAlign = Math.max(maxAlign, field.size);
+        // Padding calculation
+        let padding = (field.size - (currentOffset % field.size)) % field.size;
+        for (let p = 0; p < padding; p++) {
+          byteMap.push({ type: 'pad', label: 'PAD' });
+          currentOffset++;
+        }
+        for (let b = 0; b < field.size; b++) {
+          byteMap.push({ type: 'data', label: field.name.split(' ')[0], color: field.color });
+          currentOffset++;
+        }
+      });
+
+      // Final trailing padding to round up to multiple of maxAlign
+      let finalPad = (maxAlign - (currentOffset % maxAlign)) % maxAlign;
+      for (let p = 0; p < finalPad; p++) {
+        byteMap.push({ type: 'pad', label: 'PAD' });
+        currentOffset++;
+      }
+
+      // Render Struct Bytes
+      byteMap.forEach((b, idx) => {
+        const div = document.createElement('div');
+        div.className = `h-14 rounded border flex flex-col justify-between p-1 text-[10px] ${
+          b.type === 'pad' ? 'byte-padding border-slate-700 text-slate-500' : `${b.color} border-slate-600 font-bold`
+        }`;
+        div.innerHTML = `<span>+${idx}B</span><span class="text-center">${b.label}</span>`;
+        structGrid.appendChild(div);
+      });
+
+      document.getElementById('struct-total-bytes').innerText = `${byteMap.length} Bytes`;
+
+      // Render Union Shared Bytes (Size = max field size)
+      const unionSize = maxAlign;
+      for (let i = 0; i < unionSize; i++) {
+        const div = document.createElement('div');
+        div.className = `h-14 rounded border bg-rose-950/60 border-rose-700 text-rose-300 font-bold flex flex-col justify-between p-1 text-[10px]`;
+        div.innerHTML = `<span>Byte ${i}</span><span class="text-center">Shared</span>`;
+        unionGrid.appendChild(div);
+      }
+      document.getElementById('union-total-bytes').innerText = `${unionSize} Bytes`;
+
+      // Render Legend
+      fields.forEach(f => {
+        legend.innerHTML += `<div class="flex items-center justify-between text-slate-400"><span>Field <code>${f.name}</code>:</span><span class="text-white font-bold">${f.size} Bytes</span></div>`;
+      });
+      legend.innerHTML += `<div class="flex items-center justify-between text-amber-400 border-t border-slate-800 pt-1"><span>Alignment Rule:</span><span>Max Boundary = ${maxAlign} Bytes</span></div>`;
+
+      logMessage(`Calculated Struct alignment (${byteMap.length}B) vs Union shared space (${unionSize}B)`);
+    }
+
+    function updateUnionInt() {
+      const val = parseInt(document.getElementById('union-write-int').value) || 65;
+      const charVal = String.fromCharCode(val & 0xFF);
+      document.getElementById('union-overlap-result').innerText = `Writing int=${val} overwrites char c byte to: '${charVal}' (ASCII 0x${(val & 0xFF).toString(16)})!`;
+      logMessage(`Union shared memory modified: int=${val} overlaps low byte char c='${charVal}'`, 'warn');
+    }
+
+    // ==========================================
+    // MODULE 7: POLYNOMIAL LOGIC
+    // ==========================================
+    let poly1 = [ {coeff: 5, exp: 4}, {coeff: 3, exp: 2}, {coeff: 7, exp: 0} ];
+    let poly2 = [ {coeff: 2, exp: 4}, {coeff: 4, exp: 3}, {coeff: 1, exp: 2} ];
+
+    function renderPolynomials() {
+      renderPolyChain(poly1, 'poly1-node-chain', 'poly1-math-str', 'text-cyan-400');
+      renderPolyChain(poly2, 'poly2-node-chain', 'poly2-math-str', 'text-purple-400');
+    }
+
+    function renderPolyChain(poly, containerId, mathStrId, colorClass) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      
+      let mathText = '';
+
+      poly.forEach((term, idx) => {
+        const node = document.createElement('div');
+        node.className = `flex items-center gap-1 font-mono text-xs`;
+        node.innerHTML = `
+          <div class="bg-slate-950 border border-slate-700 rounded-lg p-2 flex items-center gap-2 shadow-md">
+            <span class="${colorClass} font-bold">${term.coeff}</span>
+            <span class="text-slate-400">x<sup>${term.exp}</sup></span>
+            <span class="text-[9px] text-slate-600 border-l border-slate-800 pl-1.5">next &rarr;</span>
+          </div>
+          ${idx < poly.length - 1 ? '<i class="fa-solid fa-arrow-right text-slate-600 text-xs"></i>' : '<span class="text-slate-600 text-xs font-bold font-mono">NULL</span>'}
+        `;
+        container.appendChild(node);
+
+        mathText += `${term.coeff > 0 && idx > 0 ? ' + ' : ''}${term.coeff}x<sup>${term.exp}</sup>`;
+      });
+
+      document.getElementById(mathStrId).innerHTML = mathText;
+    }
+
+    function polyAddTerm(polyNum) {
+      const coeff = parseInt(document.getElementById(`p${polyNum}-coeff`).value) || 1;
+      const exp = parseInt(document.getElementById(`p${polyNum}-exp`).value) || 0;
+
+      const targetPoly = polyNum === 1 ? poly1 : poly2;
+      targetPoly.push({ coeff, exp });
+      targetPoly.sort((a, b) => b.exp - a.exp); // Keep sorted by exponent
+
+      renderPolynomials();
+      logMessage(`Added term ${coeff}x^${exp} to Polynomial P${polyNum}`);
+    }
+
+    function polyAddStepByStep() {
+      let p3 = [];
+      let i = 0, j = 0;
+
+      logMessage(`--- Starting Polynomial Addition Algorithm ---`, 'action');
+
+      while (i < poly1.length && j < poly2.length) {
+        if (poly1[i].exp === poly2[j].exp) {
+          const sumCoeff = poly1[i].coeff + poly2[j].coeff;
+          logMessage(`Exponents match (${poly1[i].exp}): Sum coefficients (${poly1[i].coeff} + ${poly2[j].coeff} = ${sumCoeff})`, 'success');
+          p3.push({ coeff: sumCoeff, exp: poly1[i].exp });
+          i++; j++;
+        } else if (poly1[i].exp > poly2[j].exp) {
+          logMessage(`P1 exp (${poly1[i].exp}) > P2 exp (${poly2[j].exp}): Copy P1 term ${poly1[i].coeff}x^${poly1[i].exp}`, 'info');
+          p3.push({ coeff: poly1[i].coeff, exp: poly1[i].exp });
+          i++;
+        } else {
+          logMessage(`P2 exp (${poly2[j].exp}) > P1 exp (${poly1[i].exp}): Copy P2 term ${poly2[j].coeff}x^${poly2[j].exp}`, 'info');
+          p3.push({ coeff: poly2[j].coeff, exp: poly2[j].exp });
+          j++;
+        }
+      }
+
+      while (i < poly1.length) {
+        p3.push({ coeff: poly1[i].coeff, exp: poly1[i].exp });
+        i++;
+      }
+      while (j < poly2.length) {
+        p3.push({ coeff: poly2[j].coeff, exp: poly2[j].exp });
+        j++;
+      }
+
+      renderPolyChain(p3, 'poly3-node-chain', 'poly3-math-str', 'text-emerald-400');
+      logMessage(`Polynomial addition complete! Generated Result P3.`, 'success');
+    }
+
+    function polyEvaluate() {
+      const x = parseInt(document.getElementById('poly-eval-x').value) || 2;
+      let val1 = 0;
+      poly1.forEach(t => val1 += t.coeff * Math.pow(x, t.exp));
+      logMessage(`Evaluated Polynomial P1 at x = ${x}: Result = ${val1}`, 'action');
+    }
+
+    function polyReset() {
+      poly1 = [ {coeff: 5, exp: 4}, {coeff: 3, exp: 2}, {coeff: 7, exp: 0} ];
+      poly2 = [ {coeff: 2, exp: 4}, {coeff: 4, exp: 3}, {coeff: 1, exp: 2} ];
+      document.getElementById('poly3-node-chain').innerHTML = `<span class="text-xs text-slate-500 font-mono italic">Result node linked list will render here...</span>`;
+      document.getElementById('poly3-math-str').innerText = `Click "Add Polynomials"`;
+      renderPolynomials();
+      logMessage(`Reset polynomials to initial presets.`);
+    }
+
+    // ==========================================
+    // MODULE 8: SPARSE MATRIX LOGIC
+    // ==========================================
+    let sparseGrid = [];
+    let sparseSize = 5;
+
+    function initSparseMatrix() {
+      sparseSize = parseInt(document.getElementById('sparse-size-select').value) || 5;
+      sparseGrid = Array.from({ length: sparseSize }, () => new Array(sparseSize).fill(0));
+      
+      // Default non-zero values
+      sparseGrid[0][2] = 5;
+      sparseGrid[1][1] = 8;
+      sparseGrid[2][4] = 3;
+      sparseGrid[3][0] = 7;
+      sparseGrid[4][3] = 9;
+
+      renderSparseMatrix();
+      logMessage(`Initialized ${sparseSize}x${sparseSize} Sparse Matrix.`);
+    }
+
+    function sparseRandomize() {
+      sparseGrid = Array.from({ length: sparseSize }, () => new Array(sparseSize).fill(0));
+      let nonZeroCount = Math.floor(sparseSize * 1.2);
+      
+      while (nonZeroCount > 0) {
+        const r = Math.floor(Math.random() * sparseSize);
+        const c = Math.floor(Math.random() * sparseSize);
+        if (sparseGrid[r][c] === 0) {
+          sparseGrid[r][c] = Math.floor(Math.random() * 9) + 1;
+          nonZeroCount--;
+        }
+      }
+      renderSparseMatrix();
+      logMessage(`Randomized sparse matrix elements.`);
+    }
+
+    function renderSparseMatrix() {
+      const gridContainer = document.getElementById('sparse-matrix-grid');
+      gridContainer.style.gridTemplateColumns = `repeat(${sparseSize}, minmax(0, 1fr))`;
+      gridContainer.innerHTML = '';
+
+      let totalZeroes = 0;
+      let triplets = [];
+      let csrValues = [];
+      let csrColInd = [];
+      let csrRowPtr = [0];
+
+      for (let r = 0; r < sparseSize; r++) {
+        let rowNonZeroCount = 0;
+        for (let c = 0; c < sparseSize; c++) {
+          const val = sparseGrid[r][c];
+          if (val === 0) totalZeroes++;
+          else {
+            triplets.push({ r, c, val });
+            csrValues.push(val);
+            csrColInd.push(c);
+            rowNonZeroCount++;
+          }
+
+          const cell = document.createElement('div');
+          cell.className = `w-11 h-11 border rounded-lg flex items-center justify-center font-mono text-xs cursor-pointer transition-all ${
+            val !== 0 
+              ? 'bg-gradient-to-br from-cyan-600 to-blue-600 border-cyan-300 text-white font-bold shadow-md' 
+              : 'bg-slate-950 border-slate-800 text-slate-600 hover:border-slate-700'
+          }`;
+          cell.innerText = val;
+          cell.onclick = () => {
+            sparseGrid[r][c] = (val + 1) % 10;
+            renderSparseMatrix();
+          };
+          gridContainer.appendChild(cell);
+        }
+        csrRowPtr.push(csrRowPtr[csrRowPtr.length - 1] + rowNonZeroCount);
+      }
+
+      // 1. Render Triplet Table
+      const tbody = document.getElementById('sparse-triplet-tbody');
+      tbody.innerHTML = `
+        <tr class="text-slate-400 bg-slate-900 font-bold">
+          <td class="p-1">${sparseSize}</td>
+          <td class="p-1">${sparseSize}</td>
+          <td class="p-1 text-emerald-400">${triplets.length} (Total)</td>
+        </tr>
+      `;
+      triplets.forEach(t => {
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-1 text-slate-300">${t.r}</td>
+            <td class="p-1 text-slate-300">${t.c}</td>
+            <td class="p-1 text-emerald-400 font-bold">${t.val}</td>
+          </tr>
+        `;
+      });
+
+      // 2. Render CSR Arrays
+      document.getElementById('csr-values').innerText = `[ ${csrValues.join(', ')} ]`;
+      document.getElementById('csr-colind').innerText = `[ ${csrColInd.join(', ')} ]`;
+      document.getElementById('csr-rowptr').innerText = `[ ${csrRowPtr.join(', ')} ]`;
+
+      // 3. Memory Savings Calculation
+      const denseBytes = sparseSize * sparseSize * 4;
+      const tripletBytes = (triplets.length + 1) * 3 * 4;
+      const memorySavedPct = Math.round(((denseBytes - tripletBytes) / denseBytes) * 100);
+
+      document.getElementById('sparse-density-tag').innerText = `Sparsity: ${Math.round((totalZeroes / (sparseSize*sparseSize))*100)}% Zeroes`;
+      document.getElementById('sparse-mem-saved').innerText = `${memorySavedPct > 0 ? memorySavedPct : 0}% Memory Saved vs 2D Array`;
+    }
+
+    // ==========================================
+    // INITIALIZATION ON PAGE LOAD
+    // ==========================================
+    window.onload = function() {
+      // Initialize all module states
+      initStack();
+      initLQueue();
+      initCQueue();
+      initHeapMemory();
+      dynInit();
+      renderStructUnion();
+      renderPolynomials();
+      initSparseMatrix();
+
+      // Default active tab
+      switchTab('stack');
+    };
+  </script>
+</body>
+</html>

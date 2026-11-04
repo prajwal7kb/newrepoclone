@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Concepts & CPU Scheduler Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#131d31',
+                            900: '#0f172a',
+                            950: '#020617',
+                        },
+                        brand: {
+                            cyan: '#06b6d4',
+                            indigo: '#6366f1',
+                            violet: '#8b5cf6',
+                            emerald: '#10b981',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom Smooth Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Bus Animation Glow Effects */
+        .bus-glow-cyan {
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+        }
+        .bus-glow-indigo {
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+        }
+        .bus-glow-amber {
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+        }
+
+        /* Animated Bus Data Packets */
+        @keyframes moveRight {
+            0% { left: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 88%; opacity: 0; }
+        }
+        @keyframes moveLeft {
+            0% { left: 88%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 0%; opacity: 0; }
+        }
+
+        .packet-right {
+            animation: moveRight var(--bus-speed, 2s) linear infinite;
+        }
+        .packet-left {
+            animation: moveLeft var(--bus-speed, 2s) linear infinite;
+        }
+
+        /* Pulse Animation */
+        .pulse-subtle {
+            animation: pulseSubtle 2s infinite;
+        }
+        @keyframes pulseSubtle {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-cyan-500 selection:text-slate-950">
+
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                    <i data-lucide="cpu" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold bg-gradient-to-r from-cyan-400 via-indigo-200 to-violet-400 bg-clip-text text-transparent">
+                        OS Concepts & CPU Scheduler
+                    </h1>
+                    <p class="text-[11px] text-slate-400 font-medium">Interactive Virtual Laboratory • Syllabus Modules 1 & 2</p>
+                </div>
+            </div>
+
+            <!-- Global Status Bar & Help Button -->
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-4 bg-slate-950/80 px-3.5 py-1.5 rounded-full border border-slate-800/90 text-xs font-mono">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-slate-500">MODE:</span>
+                        <span id="globalModeIndicator" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                            USER (1)
+                        </span>
+                    </div>
+                    <div class="h-3 w-px bg-slate-800"></div>
+                    <div class="flex items-center space-x-1.5 text-slate-400">
+                        <i data-lucide="clock" class="w-3.5 h-3.5 text-cyan-400"></i>
+                        <span id="globalClock" class="text-slate-200 font-bold">00:00:00</span>
+                    </div>
+                </div>
+
+                <!-- Global Help Button "?" -->
+                <button onclick="openGlobalHelpModal()" class="w-9 h-9 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 flex items-center justify-center transition shadow-md shadow-indigo-600/10 group">
+                    <i data-lucide="help-circle" class="w-5 h-5 group-hover:scale-110 transition-transform"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col lg:flex-row gap-6">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-full lg:w-64 shrink-0">
+            <div class="bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-2xl p-4 sticky top-20 shadow-xl space-y-6">
+                
+                <!-- Module 1 Nav Section -->
+                <div>
+                    <div class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                        <i data-lucide="layers" class="w-3.5 h-3.5"></i> Module 1: OS Architecture
+                    </div>
+                    <div class="space-y-1">
+                        <button onclick="switchTab('tab-architecture')" id="btn-tab-architecture" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-cyan-300 bg-cyan-950/50 border border-cyan-500/30 shadow-sm">
+                            <i data-lucide="circuit-board" class="w-4 h-4 text-cyan-400"></i> System Bus Visualizer
+                        </button>
+                        <button onclick="switchTab('tab-syscalls')" id="btn-tab-syscalls" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                            <i data-lucide="terminal" class="w-4 h-4 text-indigo-400"></i> Dual-Mode & Syscalls
+                        </button>
+                        <button onclick="switchTab('tab-structures')" id="btn-tab-structures" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                            <i data-lucide="pyramid" class="w-4 h-4 text-violet-400"></i> Storage & OS Structure
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Module 2 Nav Section -->
+                <div>
+                    <div class="px-3 mb-2 text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                        <i data-lucide="activity" class="w-3.5 h-3.5"></i> Module 2: Processes & CPU
+                    </div>
+                    <div class="space-y-1">
+                        <button onclick="switchTab('tab-processes')" id="btn-tab-processes" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                            <i data-lucide="workflow" class="w-4 h-4 text-emerald-400"></i> Process State & PCB
+                        </button>
+                        <button onclick="switchTab('tab-ipc-threads')" id="btn-tab-ipc-threads" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                            <i data-lucide="git-fork" class="w-4 h-4 text-amber-400"></i> IPC & Multithreading
+                        </button>
+                        <button onclick="switchTab('tab-scheduling')" id="btn-tab-scheduling" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 text-rose-400"></i> CPU Scheduler Lab
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Help Tip Box -->
+                <div class="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1.5 text-xs">
+                    <div class="font-bold text-slate-300 flex items-center gap-1.5">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-400"></i> Interactive Tip
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        Click the <span class="text-cyan-400 font-bold">?</span> icon on any module card for popover explanations of OS principles.
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN WORKSPACE CONTENT AREA -->
+        <main class="flex-1 min-w-0 space-y-6">
+
+            <!-- TAB 1: HARDWARE SYSTEM BUS & ARCHITECTURE VISUALIZER -->
+            <section id="tab-architecture" class="tab-content space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl relative">
+                    
+                    <!-- Card Header -->
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="circuit-board" class="w-5 h-5 text-cyan-400"></i> Hardware System Bus Architecture Visualizer
+                            </h2>
+                            <p class="text-xs text-slate-400">Simulate physical data transfers between CPU, RAM, Disk Controller, and I/O Devices across System Bus lines.</p>
+                        </div>
+                        <button onclick="openCardHelp('hardware-bus')" class="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-800 rounded-lg transition" title="Help on System Bus">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Bus Interactive Controls -->
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80">
+                        <button onclick="triggerBusOperation('read')" class="px-3.5 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2">
+                            <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Exec Memory READ
+                        </button>
+                        <button onclick="triggerBusOperation('write')" class="px-3.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i> Exec Memory WRITE
+                        </button>
+                        <button onclick="triggerBusOperation('interrupt')" class="px-3.5 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2">
+                            <i data-lucide="zap" class="w-4 h-4"></i> Trigger I/O IRQ
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] font-mono text-slate-400">Speed:</span>
+                            <select id="busSpeedSelect" onchange="updateBusSpeed(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs font-mono text-slate-200">
+                                <option value="3s">0.5x Slow</option>
+                                <option value="1.5s" selected>1.0x Normal</option>
+                                <option value="0.75s">2.0x Fast</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Hardware Component Nodes & Bus Lines Diagram -->
+                    <div class="bg-slate-950 p-6 rounded-xl border border-slate-800/90 space-y-6 relative overflow-hidden">
+                        
+                        <!-- Top Hardware Units Grid -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+                            
+                            <!-- CPU Box -->
+                            <div id="unit-cpu" class="bg-slate-900 p-4 rounded-xl border-2 border-cyan-500/40 space-y-2 transition-all">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5"><i data-lucide="cpu" class="w-4 h-4"></i> CPU Core</span>
+                                    <span class="text-[10px] font-mono bg-cyan-950 text-cyan-300 px-1.5 py-0.5 rounded border border-cyan-800">EXEC</span>
+                                </div>
+                                <div class="font-mono text-[11px] space-y-1 text-slate-300">
+                                    <div class="flex justify-between"><span>$PC:</span><span id="bus-pc" class="text-cyan-300 font-bold">0x0040</span></div>
+                                    <div class="flex justify-between"><span>$EAX:</span><span id="bus-eax" class="text-indigo-300 font-bold">0x00FF</span></div>
+                                    <div class="flex justify-between"><span>$MAR:</span><span id="bus-mar" class="text-amber-300 font-bold">0x40A0</span></div>
+                                </div>
+                            </div>
+
+                            <!-- RAM Memory Box -->
+                            <div id="unit-ram" class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2 transition-all">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4"></i> RAM (DRAM)</span>
+                                    <span class="text-[10px] font-mono bg-indigo-950 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-800">READY</span>
+                                </div>
+                                <div class="font-mono text-[11px] space-y-1 text-slate-300">
+                                    <div class="flex justify-between"><span>0x40A0:</span><span class="text-indigo-300">0x00FF</span></div>
+                                    <div class="flex justify-between"><span>0x40A4:</span><span class="text-slate-400">0x12A0</span></div>
+                                    <div class="flex justify-between"><span>0x40A8:</span><span class="text-slate-400">0x0000</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Disk Controller Box -->
+                            <div id="unit-disk" class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2 transition-all">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i data-lucide="hard-drive" class="w-4 h-4"></i> Disk Controller</span>
+                                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">IDLE</span>
+                                </div>
+                                <div class="font-mono text-[11px] space-y-1 text-slate-400">
+                                    <div class="flex justify-between"><span>DMA Status:</span><span class="text-emerald-400">Ready</span></div>
+                                    <div class="flex justify-between"><span>Sector:</span><span>#2048</span></div>
+                                </div>
+                            </div>
+
+                            <!-- I/O Controller Box -->
+                            <div id="unit-io" class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2 transition-all">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5"><i data-lucide="keyboard" class="w-4 h-4"></i> I/O Devices</span>
+                                    <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">POLL</span>
+                                </div>
+                                <div class="font-mono text-[11px] space-y-1 text-slate-400">
+                                    <div class="flex justify-between"><span>IRQ Line:</span><span id="bus-irq" class="text-slate-400">IRQ 1 (Clear)</span></div>
+                                    <div class="flex justify-between"><span>Buf Data:</span><span>0x0D (\n)</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Physical System Bus Lines (Address, Data, Control) -->
+                        <div class="space-y-4 pt-4 border-t border-slate-800/80 relative">
+                            
+                            <!-- Address Bus Line -->
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-cyan-500/30 relative flex items-center justify-between">
+                                <div class="flex items-center gap-2 w-32 shrink-0 font-mono text-xs text-cyan-400 font-bold">
+                                    <i data-lucide="map-pin" class="w-4 h-4"></i> Address Bus
+                                </div>
+                                <div class="flex-1 h-3 bg-slate-950 rounded-full mx-3 relative overflow-hidden border border-cyan-500/20">
+                                    <div id="pkt-address" class="hidden absolute top-0 w-8 h-full bg-cyan-400 rounded-full bus-glow-cyan"></div>
+                                </div>
+                                <span id="bus-addr-label" class="font-mono text-[11px] text-cyan-300 w-24 text-right">0x40A0</span>
+                            </div>
+
+                            <!-- Data Bus Line -->
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-indigo-500/30 relative flex items-center justify-between">
+                                <div class="flex items-center gap-2 w-32 shrink-0 font-mono text-xs text-indigo-400 font-bold">
+                                    <i data-lucide="binary" class="w-4 h-4"></i> Data Bus
+                                </div>
+                                <div class="flex-1 h-3 bg-slate-950 rounded-full mx-3 relative overflow-hidden border border-indigo-500/20">
+                                    <div id="pkt-data" class="hidden absolute top-0 w-8 h-full bg-indigo-400 rounded-full bus-glow-indigo"></div>
+                                </div>
+                                <span id="bus-data-label" class="font-mono text-[11px] text-indigo-300 w-24 text-right">0x00FF</span>
+                            </div>
+
+                            <!-- Control Bus Line -->
+                            <div class="bg-slate-900/90 p-3 rounded-xl border border-amber-500/30 relative flex items-center justify-between">
+                                <div class="flex items-center gap-2 w-32 shrink-0 font-mono text-xs text-amber-400 font-bold">
+                                    <i data-lucide="sliders" class="w-4 h-4"></i> Control Bus
+                                </div>
+                                <div class="flex-1 h-3 bg-slate-950 rounded-full mx-3 relative overflow-hidden border border-amber-500/20">
+                                    <div id="pkt-control" class="hidden absolute top-0 w-8 h-full bg-amber-400 rounded-full bus-glow-amber"></div>
+                                </div>
+                                <span id="bus-ctrl-label" class="font-mono text-[11px] text-amber-300 w-24 text-right">READ_MEM</span>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Commentary Log -->
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span id="bus-status-text">System Bus ready. Execute an instruction above to view packet travel.</span>
+                            </div>
+                            <span class="text-[10px] text-slate-500">64-Bit System Bus</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: DUAL-MODE EXECUTION & SYSTEM CALL TRAP VISUALIZER -->
+            <section id="tab-syscalls" class="tab-content hidden space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="terminal" class="w-5 h-5 text-indigo-400"></i> Dual-Mode Execution & System Call TRAP
+                            </h2>
+                            <p class="text-xs text-slate-400">Interactive hardware TRAP simulation: switching from User Mode (Bit 1) to Kernel Mode (Bit 0).</p>
+                        </div>
+                        <button onclick="openCardHelp('dual-mode')" class="p-2 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Syscall Launcher Control Panel -->
+                        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Select System Call</label>
+                                <select id="syscallType" onchange="updateSyscallInputs()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-mono text-slate-200 focus:border-indigo-500 focus:outline-none">
+                                    <option value="sys_read">sys_read(fd, buf, count) - Read File/Device</option>
+                                    <option value="sys_write">sys_write(fd, buf, count) - Output Stream</option>
+                                    <option value="sys_fork">sys_fork() - Duplicate Process PCB</option>
+                                    <option value="sys_exec">sys_exec(filename) - Load Executable</option>
+                                    <option value="sys_exit">sys_exit(code) - Terminate Execution</option>
+                                </select>
+                            </div>
+
+                            <div id="syscallParamsArea" class="space-y-3 font-mono text-xs">
+                                <!-- Dynamic Parameter Fields -->
+                            </div>
+
+                            <button onclick="triggerSyscallTrap()" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+                                <i data-lucide="play-circle" class="w-4 h-4"></i> Execute `int 0x80` TRAP
+                            </button>
+                        </div>
+
+                        <!-- Dynamic Context & Hardware State Visualizer -->
+                        <div class="lg:col-span-2 bg-slate-950 p-5 rounded-xl border border-slate-800/90 flex flex-col justify-between space-y-4">
+                            
+                            <!-- CPU Mode Bit Switch Header -->
+                            <div class="flex items-center justify-between p-4 bg-slate-900 rounded-xl border border-slate-800">
+                                <div class="flex items-center gap-3">
+                                    <div id="modeIconBox" class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-mono font-bold text-base">
+                                        1
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-200">Hardware CPU Privilege State</div>
+                                        <div id="modeStatusLabel" class="text-xs text-emerald-400 font-semibold">USER MODE (Bit 1 - Unprivileged)</div>
+                                    </div>
+                                </div>
+                                <span id="ivtVectorBadge" class="font-mono text-xs bg-slate-950 text-indigo-300 px-3 py-1 rounded-lg border border-slate-800">Vector: 0x80 (Software Interrupt)</span>
+                            </div>
+
+                            <!-- Context Pipeline Tracker -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono text-[11px]" id="trapPipeline">
+                                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400" id="trap-step-1">1. User Exec</div>
+                                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400" id="trap-step-2">2. Save $EIP/$SP</div>
+                                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400" id="trap-step-3">3. Mode Bit=0</div>
+                                <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400" id="trap-step-4">4. Kernel ISR</div>
+                            </div>
+
+                            <!-- Execution Console Log -->
+                            <div class="flex-1 bg-slate-900/80 p-3 rounded-xl border border-slate-850 font-mono text-xs overflow-y-auto max-h-48 space-y-1.5" id="syscallTraceLog">
+                                <div class="text-slate-500">// Waiting for software trap trigger (`int 0x80`)...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: OS STRUCTURE & STORAGE HIERARCHY -->
+            <section id="tab-structures" class="tab-content hidden space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="pyramid" class="w-5 h-5 text-violet-400"></i> OS Architecture Structures & Memory Hierarchy
+                            </h2>
+                            <p class="text-xs text-slate-400">Compare Monolithic, Layered, Microkernel & Dynamic Modular OS structures alongside storage speed/cost tradeoffs.</p>
+                        </div>
+                        <button onclick="openCardHelp('os-structures')" class="p-2 text-slate-400 hover:text-violet-400 hover:bg-slate-800 rounded-lg transition">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Arch Style Buttons -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="switchArchDiagram('monolithic')" id="arch-monolithic" class="arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-violet-600 text-white shadow-md">Monolithic</button>
+                        <button onclick="switchArchDiagram('layered')" id="arch-layered" class="arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700">Layered</button>
+                        <button onclick="switchArchDiagram('microkernel')" id="arch-microkernel" class="arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700">Microkernel</button>
+                        <button onclick="switchArchDiagram('modular')" id="arch-modular" class="arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700">Modular (LKM)</button>
+                    </div>
+
+                    <!-- Architecture Diagram Box -->
+                    <div id="archDisplayCard" class="bg-slate-950 p-6 rounded-xl border border-slate-800/90 space-y-4">
+                        <!-- Dynamic Arch Content -->
+                    </div>
+
+                    <!-- Interactive Storage Pyramid -->
+                    <div class="pt-6 border-t border-slate-800/80">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                            <i data-lucide="database" class="w-4 h-4 text-cyan-400"></i> Interactive Storage Hierarchy Pyramid
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Pyramid Visual List -->
+                            <div class="space-y-2 font-mono text-xs">
+                                <div onclick="inspectStorageTier('reg')" class="cursor-pointer p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl hover:bg-rose-500/30 transition text-center text-rose-300 font-bold">
+                                    CPU Registers (&lt; 1 ns, Bytes)
+                                </div>
+                                <div onclick="inspectStorageTier('cache')" class="cursor-pointer p-3 bg-amber-500/20 border border-amber-500/40 rounded-xl hover:bg-amber-500/30 transition text-center text-amber-300 font-bold mx-3">
+                                    L1 / L2 / L3 Cache (1-10 ns, MBs)
+                                </div>
+                                <div onclick="inspectStorageTier('ram')" class="cursor-pointer p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl hover:bg-emerald-500/30 transition text-center text-emerald-300 font-bold mx-6">
+                                    Main Memory / RAM (50-100 ns, GBs)
+                                </div>
+                                <div onclick="inspectStorageTier('ssd')" class="cursor-pointer p-3 bg-cyan-500/20 border border-cyan-500/40 rounded-xl hover:bg-cyan-500/30 transition text-center text-cyan-300 font-bold mx-9">
+                                    NVMe Flash SSD (10-100 μs, TBs)
+                                </div>
+                                <div onclick="inspectStorageTier('hdd')" class="cursor-pointer p-3 bg-indigo-500/20 border border-indigo-500/40 rounded-xl hover:bg-indigo-500/30 transition text-center text-indigo-300 font-bold mx-12">
+                                    Magnetic Disk HDD (5-10 ms, TBs)
+                                </div>
+                            </div>
+
+                            <!-- Storage Details Box -->
+                            <div id="storageTierDetails" class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span id="stg-name" class="text-sm font-bold text-cyan-400">Main Memory (RAM)</span>
+                                    <span id="stg-vol" class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">VOLATILE</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                                        <span class="text-slate-500 block text-[10px]">Access Speed</span>
+                                        <span id="stg-speed" class="text-slate-200 font-bold">50 - 100 ns</span>
+                                    </div>
+                                    <div class="bg-slate-900 p-2.5 rounded-lg border border-slate-800">
+                                        <span class="text-slate-500 block text-[10px]">Typical Size</span>
+                                        <span id="stg-cap" class="text-slate-200 font-bold">16 GB - 128 GB</span>
+                                    </div>
+                                </div>
+                                <p id="stg-desc" class="text-xs text-slate-400 leading-relaxed">
+                                    Primary volatile RAM accessible directly by CPU memory controller. Holds active process execution memory.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: PROCESS STATE MACHINE & PCB INSPECTOR -->
+            <section id="tab-processes" class="tab-content hidden space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="workflow" class="w-5 h-5 text-emerald-400"></i> Process Concept, 5-State Lifecycle & PCB Inspector
+                            </h2>
+                            <p class="text-xs text-slate-400">Simulate process state transitions and inspect active Process Control Block (PCB) memory layout.</p>
+                        </div>
+                        <button onclick="openCardHelp('process-pcb')" class="p-2 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- 5-State Machine Diagram -->
+                    <div class="bg-slate-950 p-6 rounded-xl border border-slate-800/90 space-y-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Process State Machine Transitions</span>
+                            <div class="flex gap-2">
+                                <button onclick="triggerStateEvent('admit')" class="px-2.5 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 text-xs font-semibold rounded-lg">Admit</button>
+                                <button onclick="triggerStateEvent('dispatch')" class="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg">Dispatch</button>
+                                <button onclick="triggerStateEvent('wait')" class="px-2.5 py-1 bg-amber-600/20 hover:bg-amber-600/40 text-amber-300 border border-amber-500/30 text-xs font-semibold rounded-lg">I/O Wait</button>
+                                <button onclick="triggerStateEvent('exit')" class="px-2.5 py-1 bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 text-xs font-semibold rounded-lg">Exit</button>
+                            </div>
+                        </div>
+
+                        <!-- States Visual Flow -->
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center font-mono text-xs">
+                            <div id="pstate-new" class="p-4 rounded-xl bg-slate-900 border-2 border-purple-500/40 text-purple-300 transition-all">
+                                <div class="font-bold">NEW</div>
+                                <div class="text-[9px] text-slate-500 mt-1">Forked / Created</div>
+                            </div>
+                            <div id="pstate-ready" class="p-4 rounded-xl bg-slate-900 border-2 border-amber-500/40 text-amber-300 transition-all">
+                                <div class="font-bold">READY</div>
+                                <div class="text-[9px] text-slate-500 mt-1">In Ready Queue</div>
+                            </div>
+                            <div id="pstate-running" class="p-4 rounded-xl bg-slate-900 border-2 border-emerald-500 text-emerald-300 shadow-lg shadow-emerald-500/20 scale-105 transition-all">
+                                <div class="font-bold">RUNNING</div>
+                                <div class="text-[9px] text-emerald-400 mt-1">Executing on CPU</div>
+                            </div>
+                            <div id="pstate-waiting" class="p-4 rounded-xl bg-slate-900 border-2 border-blue-500/40 text-blue-300 transition-all">
+                                <div class="font-bold">WAITING</div>
+                                <div class="text-[9px] text-slate-500 mt-1">Blocked on I/O</div>
+                            </div>
+                            <div id="pstate-terminated" class="p-4 rounded-xl bg-slate-900 border-2 border-rose-500/40 text-rose-300 transition-all">
+                                <div class="font-bold">TERMINATED</div>
+                                <div class="text-[9px] text-slate-500 mt-1">Zombie / Reaped</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live PCB Register Drawer -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 font-mono text-xs space-y-3">
+                            <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+                                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i> Process Control Block (PCB #1042)
+                                </span>
+                                <span id="pcbStateLabel" class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">RUNNING</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <div class="bg-slate-900 p-2 rounded border border-slate-800"><span class="text-slate-500 block">PID / PPID</span><span class="text-cyan-300 font-bold">1042 / 1001</span></div>
+                                <div class="bg-slate-900 p-2 rounded border border-slate-800"><span class="text-slate-500 block">Program Counter</span><span id="pcb-pc-val" class="text-indigo-300 font-bold">0x00407F20</span></div>
+                                <div class="bg-slate-900 p-2 rounded border border-slate-800"><span class="text-slate-500 block">Stack Pointer ($SP)</span><span class="text-violet-300 font-bold">0x7FFF0040</span></div>
+                                <div class="bg-slate-900 p-2 rounded border border-slate-800"><span class="text-slate-500 block">Base / Limit</span><span class="text-amber-300 font-bold">0x4000 / 64KB</span></div>
+                            </div>
+                            <div>
+                                <span class="text-[10px] text-slate-500 block mb-1">Active File Descriptors (fd):</span>
+                                <div class="bg-slate-900 p-2 rounded border border-slate-800 text-slate-300 text-[10px] space-y-0.5">
+                                    <div>fd[0]: stdin (keyboard)</div>
+                                    <div>fd[1]: stdout (terminal tty0)</div>
+                                    <div>fd[2]: stderr (terminal tty0)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Explanation Card -->
+                        <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 space-y-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">PCB Role in Context Switching</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                When the OS CPU scheduler switches context from Process A to Process B:
+                            </p>
+                            <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                                <li>The hardware state ($PC, $SP, registers) of Process A is saved directly into Process A's PCB.</li>
+                                <li>Process A's state is updated from <span class="text-emerald-400 font-mono">RUNNING</span> to <span class="text-amber-400 font-mono">READY</span> or <span class="text-blue-400 font-mono">WAITING</span>.</li>
+                                <li>The OS loads Process B's PCB registers into CPU hardware and restores execution.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: IPC & MULTITHREADING MODELS -->
+            <section id="tab-ipc-threads" class="tab-content hidden space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="git-fork" class="w-5 h-5 text-amber-400"></i> Inter-Process Communication (IPC) & Multithreading
+                            </h2>
+                            <p class="text-xs text-slate-400">Simulate Shared Memory vs Message Passing IPC and observe User-to-Kernel Thread mapping models.</p>
+                        </div>
+                        <button onclick="openCardHelp('ipc-threads')" class="p-2 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition">
+                            <i data-lucide="help-circle" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- IPC Simulator Block -->
+                    <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                                <i data-lucide="arrow-left-right" class="w-4 h-4"></i> IPC Mode Simulator
+                            </span>
+                            <div class="flex gap-2">
+                                <button onclick="setIpcMode('shared')" id="ipc-btn-shared" class="px-3 py-1 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow-md">Shared Memory</button>
+                                <button onclick="setIpcMode('message')" id="ipc-btn-message" class="px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700">Message Passing</button>
+                            </div>
+                        </div>
+
+                        <!-- IPC Animated Container -->
+                        <div id="ipcDisplayBox" class="p-4 bg-slate-900 rounded-xl border border-slate-850 space-y-3 font-mono text-xs">
+                            <!-- Dynamic IPC View -->
+                        </div>
+                    </div>
+
+                    <!-- Multithreading Models Grid -->
+                    <div class="space-y-4">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i data-lucide="layers" class="w-4 h-4 text-violet-400"></i> Multithreading Mapping Models
+                        </span>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Many to One -->
+                            <div onclick="setThreadModel('manyToOne')" id="tmodel-manyToOne" class="cursor-pointer bg-slate-950 p-4 rounded-xl border-2 border-slate-800 hover:border-amber-500/50 transition space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-xs text-amber-400">Many-to-One Model</span>
+                                    <span class="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">User Threads</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Multiple user threads map to 1 kernel thread. Fast context switch, but 1 blocking call halts all threads.</p>
+                            </div>
+
+                            <!-- One to One -->
+                            <div onclick="setThreadModel('oneToOne')" id="tmodel-oneToOne" class="cursor-pointer bg-slate-950 p-4 rounded-xl border-2 border-indigo-500 bg-indigo-950/20 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-xs text-indigo-400">One-to-One Model</span>
+                                    <span class="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">Linux / Win</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Each user thread maps to 1 kernel thread. True multi-core execution; higher overhead creating threads.</p>
+                            </div>
+
+                            <!-- Many to Many -->
+                            <div onclick="setThreadModel('manyToMany')" id="tmodel-manyToMany" class="cursor-pointer bg-slate-950 p-4 rounded-xl border-2 border-slate-800 hover:border-violet-500/50 transition space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-xs text-violet-400">Many-to-Many Model</span>
+                                    <span class="text-[9px] bg-violet-500/20 text-violet-300 px-1.5 py-0.5 rounded">Multiplexed</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Multiplexes M user threads onto N kernel threads (M ≥ N). Best concurrency without kernel saturation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: CPU SCHEDULING ALGORITHM SIMULATOR & BENCHMARKS -->
+            <section id="tab-scheduling" class="tab-content hidden space-y-6">
+                <div class="bg-slate-900/80 backdrop-blur border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                    
+                    <!-- Header & Quick Run -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                                <i data-lucide="bar-chart-3" class="w-5 h-5 text-rose-400"></i> CPU Scheduling Simulator & Benchmark Lab
+                            </h2>
+                            <p class="text-xs text-slate-400">Simulate FCFS, SJF, SRTF, Priority, and Round Robin with step-by-step Gantt execution and live metrics.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openCardHelp('scheduling')" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition mr-2">
+                                <i data-lucide="help-circle" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="startSchedulerSimulation()" class="px-4 py-2 bg-gradient-to-r from-rose-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-rose-600/20 transition flex items-center gap-1.5">
+                                <i data-lucide="play" class="w-4 h-4"></i> Run Simulation
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scheduler Configuration Bar -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800/90">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Algorithm</label>
+                            <select id="algoSelect" onchange="toggleAlgoInputs()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-200 focus:border-rose-500 focus:outline-none">
+                                <option value="fcfs">First-Come, First-Served (FCFS)</option>
+                                <option value="sjf">Shortest Job First (SJF - Non-Preemptive)</option>
+                                <option value="srtf">Shortest Remaining Time First (SRTF)</option>
+                                <option value="priority-np">Priority (Non-Preemptive)</option>
+                                <option value="priority-p">Priority (Preemptive)</option>
+                                <option value="rr" selected>Round Robin (RR)</option>
+                            </select>
+                        </div>
+
+                        <div id="quantumInputBox">
+                            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Time Quantum (RR)</label>
+                            <input type="number" id="timeQuantum" value="2" min="1" max="10" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:border-rose-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Preset Scenarios</label>
+                            <select onchange="loadPresetWorkload(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-semibold text-slate-200 focus:border-rose-500 focus:outline-none">
+                                <option value="default">Balanced Workload</option>
+                                <option value="convoy">Convoy Effect Demo (FCFS)</option>
+                                <option value="starvation">Starvation Demo (Priority)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Animation Speed</label>
+                            <div class="flex items-center gap-2 pt-1">
+                                <input type="range" id="simSpeedSlider" min="100" max="1500" step="100" value="500" class="w-full accent-rose-500">
+                                <span class="text-[10px] font-mono text-slate-400 w-12 text-right">0.5s/tick</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Workload Table -->
+                    <div class="bg-slate-950 rounded-xl border border-slate-800/90 overflow-hidden">
+                        <div class="p-3.5 bg-slate-900/80 border-b border-slate-800 flex justify-between items-center">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="list" class="w-4 h-4 text-rose-400"></i> Process Workload Queue
+                            </span>
+                            <div class="flex gap-2">
+                                <button onclick="addNewProcessRow()" class="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 text-xs font-semibold rounded-lg flex items-center gap-1">
+                                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Process
+                                </button>
+                                <button onclick="resetSchedulerWorkload()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left font-mono text-xs">
+                                <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-3">PID</th>
+                                        <th class="p-3">Arrival Time (AT)</th>
+                                        <th class="p-3">Burst Time (BT)</th>
+                                        <th class="p-3">Priority (1 = High)</th>
+                                        <th class="p-3 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="processWorkloadBody" class="divide-y divide-slate-850">
+                                    <!-- Dynamic Process Inputs -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Execution Controls Bar -->
+                    <div class="flex items-center justify-between bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex items-center gap-2">
+                            <button onclick="togglePlayPauseSim()" id="btnPlayPause" class="p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition" title="Play / Pause">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="stepSimForward()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition" title="Step Forward">
+                                <i data-lucide="skip-forward" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="stopSimReset()" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition" title="Reset Timeline">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="font-mono text-xs text-slate-300">
+                            Current Tick: <span id="simCurrentTime" class="text-rose-400 font-bold">0</span> units
+                        </div>
+                    </div>
+
+                    <!-- Gantt Chart Container -->
+                    <div class="bg-slate-950 p-5 rounded-xl border border-slate-800/90 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="gantt-chart" class="w-4 h-4 text-cyan-400"></i> Execution Gantt Chart Timeline
+                            </span>
+                            <span id="ganttTimeTotal" class="text-xs font-mono text-cyan-400">Total: 0 units</span>
+                        </div>
+
+                        <div id="ganttVisualBar" class="w-full overflow-x-auto min-h-[64px] p-3 bg-slate-900 rounded-xl border border-slate-850 flex items-center gap-1">
+                            <div class="text-slate-500 text-xs font-mono text-center w-full">Click "Run Simulation" to generate Gantt chart timeline.</div>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Performance Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-500 text-xs font-medium block">Avg Waiting Time</span>
+                            <span id="metric-awt" class="text-xl font-mono font-bold text-cyan-400 mt-1 block">0.00 units</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-500 text-xs font-medium block">Avg Turnaround Time</span>
+                            <span id="metric-att" class="text-xl font-mono font-bold text-indigo-400 mt-1 block">0.00 units</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-500 text-xs font-medium block">CPU Utilization</span>
+                            <span id="metric-util" class="text-xl font-mono font-bold text-emerald-400 mt-1 block">100.0%</span>
+                        </div>
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                            <span class="text-slate-500 text-xs font-medium block">Throughput</span>
+                            <span id="metric-tput" class="text-xl font-mono font-bold text-violet-400 mt-1 block">0.00 / unit</span>
+                        </div>
+                    </div>
+
+                    <!-- Calculated Process Results Table -->
+                    <div class="bg-slate-950 rounded-xl border border-slate-800/90 overflow-hidden">
+                        <div class="p-3.5 bg-slate-900/80 border-b border-slate-800">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Calculated Scheduling Metrics Summary Table
+                            </span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left font-mono text-xs">
+                                <thead class="bg-slate-900/90 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th class="p-3">PID</th>
+                                        <th class="p-3">Arrival (AT)</th>
+                                        <th class="p-3">Burst (BT)</th>
+                                        <th class="p-3">Completion (CT)</th>
+                                        <th class="p-3">Turnaround (TAT = CT - AT)</th>
+                                        <th class="p-3">Waiting (WT = TAT - BT)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedResultsBody" class="divide-y divide-slate-850 text-slate-300">
+                                    <tr><td colspan="6" class="p-4 text-center text-slate-500">No simulation run yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- GLOBAL USER GUIDE MODAL "?" -->
+    <div id="globalHelpModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100">OS Concepts Lab Guide & User Manual</h3>
+                        <p class="text-xs text-slate-400">Comprehensive overview of topics covered in Modules 1 & 2</p>
+                    </div>
+                </div>
+                <button onclick="closeGlobalHelpModal()" class="text-slate-400 hover:text-slate-200">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs text-slate-300 leading-relaxed font-sans">
+                <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-cyan-400 flex items-center gap-1.5"><i data-lucide="circuit-board" class="w-4 h-4"></i> Module 1: System Bus & Dual-Mode</h4>
+                    <p class="text-slate-400">
+                        • <strong>Hardware System Bus:</strong> Controls movement of memory read/write data packets across Address Bus (hex locations), Data Bus (payload bytes), and Control Bus (signals).<br>
+                        • <strong>Dual-Mode Execution:</strong> Protects hardware resources using Mode Bit 1 (User Mode) and Mode Bit 0 (Kernel Mode). Software TRAPs (`int 0x80`) switch privilege securely.
+                    </p>
+                </div>
+
+                <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-emerald-400 flex items-center gap-1.5"><i data-lucide="workflow" class="w-4 h-4"></i> Module 2: Process Management & PCB</h4>
+                    <p class="text-slate-400">
+                        • <strong>5-State Machine:</strong> Tracks processes through NEW, READY, RUNNING, WAITING, and TERMINATED states.<br>
+                        • <strong>PCB (Process Control Block):</strong> Data structure in kernel memory storing $PC, $SP, registers, memory limits, and file descriptors during context switching.
+                    </p>
+                </div>
+
+                <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-rose-400 flex items-center gap-1.5"><i data-lucide="bar-chart-3" class="w-4 h-4"></i> Module 2: CPU Scheduling Algorithms</h4>
+                    <p class="text-slate-400">
+                        • <strong>FCFS:</strong> Non-preemptive, executes processes in arrival order.<br>
+                        • <strong>SJF / SRTF:</strong> Chooses shortest remaining burst time to minimize Average Waiting Time.<br>
+                        • <strong>Round Robin:</strong> Time-sliced execution via Time Quantum for interactive fairness.
+                    </p>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 text-right">
+                <button onclick="closeGlobalHelpModal()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg transition">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARD POPOVER HELP MODAL -->
+    <div id="cardHelpModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 id="cardHelpTitle" class="text-sm font-bold text-cyan-400 flex items-center gap-2">
+                    <i data-lucide="help-circle" class="w-4 h-4"></i> Module Guide
+                </h3>
+                <button onclick="closeCardHelp()" class="text-slate-400 hover:text-slate-200">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p id="cardHelpBody" class="text-xs text-slate-300 leading-relaxed font-sans">
+                Card details here...
+            </p>
+            <div class="text-right pt-2">
+                <button onclick="closeCardHelp()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // System Clock Counter
+        let globalSecs = 0;
+        setInterval(() => {
+            globalSecs++;
+            const h = String(Math.floor(globalSecs / 3600)).padStart(2, '0');
+            const m = String(Math.floor((globalSecs % 3600) / 60)).padStart(2, '0');
+            const s = String(globalSecs % 60).padStart(2, '0');
+            const clock = document.getElementById('globalClock');
+            if (clock) clock.innerText = `${h}:${m}:${s}`;
+        }, 1000);
+
+        // Sidebar Navigation Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById(tabId);
+            if (target) target.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60';
+            });
+
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = 'nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-cyan-300 bg-cyan-950/50 border border-cyan-500/30 shadow-sm';
+            }
+        }
+
+        // Help Modal Controls
+        function openGlobalHelpModal() { document.getElementById('globalHelpModal').classList.remove('hidden'); }
+        function closeGlobalHelpModal() { document.getElementById('globalHelpModal').classList.add('hidden'); }
+
+        const cardHelpData = {
+            'hardware-bus': {
+                title: "Hardware System Bus Architecture",
+                body: "The System Bus connects the CPU, Main Memory (RAM), Disk Controller, and I/O Devices. It consists of: 1) Address Bus (carries memory locations), 2) Data Bus (transfers actual byte payloads), 3) Control Bus (transmits READ, WRITE, and IRQ interrupt signals). Use the buttons above to trigger live packet animations!"
+            },
+            'dual-mode': {
+                title: "Dual-Mode Execution & Software Traps",
+                body: "Modern CPUs support Dual-Mode operation to protect system resources. Applications run in User Mode (Mode Bit = 1) with restricted CPU instructions. Requesting kernel services (File I/O, Process Forking) executes a software trap (`int 0x80`) which pushes user registers onto the stack and flips Mode Bit to 0 (Kernel Mode)."
+            },
+            'os-structures': {
+                title: "OS Structures & Storage Hierarchy",
+                body: "Operating systems organize kernel capabilities into Monolithic, Layered, Microkernel, or Modular structures. The Storage Hierarchy balances high speed/low capacity registers & SRAM caches at the top against slower, non-volatile SSD/HDD drives at the base."
+            },
+            'process-pcb': {
+                title: "Process State Lifecycle & PCB",
+                body: "Processes transition across 5 states: NEW -> READY -> RUNNING -> WAITING -> TERMINATED. The OS kernel maintains a Process Control Block (PCB) for each active process storing registers, program counter ($PC), base/limit memory bounds, and file descriptor tables."
+            },
+            'ipc-threads': {
+                title: "IPC & Multithreading Models",
+                body: "IPC allows processes to exchange data via Shared Memory (fastest, no kernel overhead after setup) or Message Passing (managed kernel queues). Threading maps User-level threads to Kernel threads using Many-to-One, One-to-One, or Many-to-Many models."
+            },
+            'scheduling': {
+                title: "CPU Scheduling Algorithms & Metrics",
+                body: "The CPU scheduler chooses which ready process to execute next. Key algorithms include FCFS, SJF/SRTF, Priority, and Round Robin (RR). Metrics evaluated: Turnaround Time (TAT = CT - AT) and Waiting Time (WT = TAT - BT)."
+            }
+        };
+
+        function openCardHelp(key) {
+            const info = cardHelpData[key];
+            if (info) {
+                document.getElementById('cardHelpTitle').innerText = info.title;
+                document.getElementById('cardHelpBody').innerText = info.body;
+                document.getElementById('cardHelpModal').classList.remove('hidden');
+            }
+        }
+        function closeCardHelp() { document.getElementById('cardHelpModal').classList.add('hidden'); }
+
+        /* -------------------------------------------------------------------
+           MODULE 1: HARDWARE SYSTEM BUS ANIMATION ENGINE
+           ------------------------------------------------------------------- */
+        let currentBusSpeed = '1.5s';
+
+        function updateBusSpeed(val) {
+            currentBusSpeed = val;
+            document.documentElement.style.setProperty('--bus-speed', val);
+        }
+
+        function triggerBusOperation(op) {
+            const pAddr = document.getElementById('pkt-address');
+            const pData = document.getElementById('pkt-data');
+            const pCtrl = document.getElementById('pkt-control');
+            const status = document.getElementById('bus-status-text');
+
+            // Reset packet animations
+            [pAddr, pData, pCtrl].forEach(p => p.classList.remove('hidden', 'packet-right', 'packet-left'));
+
+            if (op === 'read') {
+                document.getElementById('bus-addr-label').innerText = '0x40A0';
+                document.getElementById('bus-data-label').innerText = '0x00FF';
+                document.getElementById('bus-ctrl-label').innerText = 'READ_MEM';
+                status.innerText = 'CPU issued READ signal to RAM address 0x40A0...';
+
+                pAddr.classList.add('packet-right');
+                pCtrl.classList.add('packet-right');
+                setTimeout(() => { pData.classList.add('packet-left'); }, 750);
+            } else if (op === 'write') {
+                document.getElementById('bus-addr-label').innerText = '0x40A4';
+                document.getElementById('bus-data-label').innerText = '0x12A0';
+                document.getElementById('bus-ctrl-label').innerText = 'WRITE_MEM';
+                status.innerText = 'CPU writing payload 0x12A0 directly into RAM address 0x40A4...';
+
+                pAddr.classList.add('packet-right');
+                pData.classList.add('packet-right');
+                pCtrl.classList.add('packet-right');
+            } else if (op === 'interrupt') {
+                document.getElementById('bus-ctrl-label').innerText = 'IRQ 1 (KEYB)';
+                document.getElementById('bus-irq').innerText = 'IRQ 1 (ACTIVE)';
+                status.innerText = 'Keyboard Controller asserted IRQ 1 line to signal incoming user data!';
+
+                pCtrl.classList.add('packet-left');
+                setTimeout(() => { document.getElementById('bus-irq').innerText = 'IRQ 1 (Clear)'; }, 2000);
+            }
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 1: DUAL MODE & SYSTEM CALL TRAP
+           ------------------------------------------------------------------- */
+        const syscallConfigs = {
+            sys_read: { params: '<div class="flex justify-between"><span>$EBX (FD):</span><span class="text-cyan-300">0 (stdin)</span></div><div class="flex justify-between"><span>$ECX (Buf):</span><span class="text-indigo-300">0x00408000</span></div>' },
+            sys_write: { params: '<div class="flex justify-between"><span>$EBX (FD):</span><span class="text-cyan-300">1 (stdout)</span></div><div class="flex justify-between"><span>$ECX (Buf):</span><span class="text-indigo-300">"Hello World"</span></div>' },
+            sys_fork: { params: '<div class="flex justify-between"><span>$EAX (Syscall #):</span><span class="text-cyan-300">0x0002</span></div>' },
+            sys_exec: { params: '<div class="flex justify-between"><span>$EBX (Path):</span><span class="text-cyan-300">"/bin/bash"</span></div>' },
+            sys_exit: { params: '<div class="flex justify-between"><span>$EBX (Code):</span><span class="text-cyan-300">0 (Success)</span></div>' }
+        };
+
+        function updateSyscallInputs() {
+            const call = document.getElementById('syscallType').value;
+            document.getElementById('syscallParamsArea').innerHTML = syscallConfigs[call].params;
+        }
+        updateSyscallInputs();
+
+        function triggerSyscallTrap() {
+            const call = document.getElementById('syscallType').value;
+            const modeBox = document.getElementById('modeIconBox');
+            const modeLabel = document.getElementById('modeStatusLabel');
+            const globalInd = document.getElementById('globalModeIndicator');
+            const log = document.getElementById('syscallTraceLog');
+
+            // Reset steps
+            document.querySelectorAll('#trapPipeline div').forEach(d => d.className = 'p-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400');
+
+            document.getElementById('trap-step-1').className = 'p-2.5 rounded-lg bg-indigo-600 text-white font-bold';
+
+            setTimeout(() => {
+                document.getElementById('trap-step-2').className = 'p-2.5 rounded-lg bg-indigo-600 text-white font-bold';
+            }, 300);
+
+            // Flip Mode to Kernel (0)
+            setTimeout(() => {
+                document.getElementById('trap-step-3').className = 'p-2.5 rounded-lg bg-rose-600 text-white font-bold';
+                modeBox.className = 'w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center font-mono font-bold text-base';
+                modeBox.innerText = '0';
+                modeLabel.innerText = 'KERNEL MODE (Bit 0 - Privileged)';
+                modeLabel.className = 'text-xs text-rose-400 font-semibold';
+                globalInd.className = 'px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold border border-rose-500/30 flex items-center gap-1.5';
+                globalInd.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span> KERNEL (0)';
+            }, 600);
+
+            setTimeout(() => {
+                document.getElementById('trap-step-4').className = 'p-2.5 rounded-lg bg-indigo-600 text-white font-bold';
+                const entry = document.createElement('div');
+                entry.className = 'text-cyan-300 border-l-2 border-cyan-500 pl-2';
+                entry.innerText = `[${new Date().toLocaleTimeString()}] TRAP: ${call}() executed -> Mode bit flipped to 0 -> Kernel ISR completed -> Executed iret instruction.`;
+                log.appendChild(entry);
+            }, 900);
+
+            // Restore User Mode (1)
+            setTimeout(() => {
+                modeBox.className = 'w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-mono font-bold text-base';
+                modeBox.innerText = '1';
+                modeLabel.innerText = 'USER MODE (Bit 1 - Unprivileged)';
+                modeLabel.className = 'text-xs text-emerald-400 font-semibold';
+                globalInd.className = 'px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 flex items-center gap-1.5';
+                globalInd.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> USER (1)';
+            }, 1800);
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 1: OS STRUCTURES & STORAGE HIERARCHY
+           ------------------------------------------------------------------- */
+        const archInfo = {
+            monolithic: { title: "Monolithic Kernel Architecture", text: "All core OS services (Memory Manager, Scheduler, VFS, Drivers) run in a single kernel address space. Maximum performance, but low fault isolation." },
+            layered: { title: "Layered Operating System", text: "Organized into hierarchical layers (Layer 0 = Hardware, Layer N = User Apps). Modular design simplifies debugging, but layer-crossing introduces execution latency." },
+            microkernel: { title: "Microkernel Architecture", text: "Keeps only minimal services in kernel space (IPC, Basic Memory, Scheduling). Drivers & File systems run in user space for high security." },
+            modular: { title: "Modular Architecture (LKM)", text: "Dynamic Loadable Kernel Modules. Core kernel dynamically loads optional modules at runtime without rebooting." }
+        };
+
+        function switchArchDiagram(key) {
+            document.querySelectorAll('.arch-tab').forEach(b => b.className = 'arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700');
+            document.getElementById(`arch-${key}`).className = 'arch-tab px-4 py-2 rounded-xl text-xs font-semibold bg-violet-600 text-white shadow-md';
+
+            const d = archInfo[key];
+            document.getElementById('archDisplayCard').innerHTML = `
+                <h4 class="text-sm font-bold text-violet-300">${d.title}</h4>
+                <p class="text-xs text-slate-300 leading-relaxed">${d.text}</p>
+            `;
+        }
+        switchArchDiagram('monolithic');
+
+        const storageInfo = {
+            reg: { name: "CPU Registers", vol: "VOLATILE", speed: "< 1 ns", cap: "Bytes - KB", desc: "Internal register array inside CPU core for immediate instruction execution." },
+            cache: { name: "L1 / L2 / L3 Cache", vol: "VOLATILE", speed: "1 - 10 ns", cap: "MBs", desc: "SRAM cache memory bridging speed gaps between CPU clock and DRAM." },
+            ram: { name: "Main Memory (RAM)", vol: "VOLATILE", speed: "50 - 100 ns", cap: "16 - 128 GB", desc: "Dynamic RAM holding active process code, stacks, and heap data." },
+            ssd: { name: "NVMe Flash SSD", vol: "NON-VOLATILE", speed: "10 - 100 μs", cap: "1 - 4 TB", desc: "High-speed persistent solid-state storage." },
+            hdd: { name: "Magnetic Hard Disk", vol: "NON-VOLATILE", speed: "5 - 10 ms", cap: "TBs", desc: "Mechanical spinning disk storage." }
+        };
+
+        function inspectStorageTier(key) {
+            const d = storageInfo[key];
+            document.getElementById('stg-name').innerText = d.name;
+            document.getElementById('stg-vol').innerText = d.vol;
+            document.getElementById('stg-speed').innerText = d.speed;
+            document.getElementById('stg-cap').innerText = d.cap;
+            document.getElementById('stg-desc').innerText = d.desc;
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 2: PROCESS MANAGEMENT & IPC
+           ------------------------------------------------------------------- */
+        function triggerStateEvent(ev) {
+            document.querySelectorAll('#pstate-new, #pstate-ready, #pstate-running, #pstate-waiting, #pstate-terminated').forEach(el => {
+                el.className = el.className.replace('scale-105 shadow-lg border-emerald-500', '');
+            });
+
+            if (ev === 'admit') {
+                document.getElementById('pstate-ready').className += ' scale-105 border-amber-500 text-amber-300 font-bold';
+                document.getElementById('pcbStateLabel').innerText = 'READY';
+            } else if (ev === 'dispatch') {
+                document.getElementById('pstate-running').className += ' scale-105 shadow-lg border-emerald-500 text-emerald-300 font-bold';
+                document.getElementById('pcbStateLabel').innerText = 'RUNNING';
+            } else if (ev === 'wait') {
+                document.getElementById('pstate-waiting').className += ' scale-105 border-blue-500 text-blue-300 font-bold';
+                document.getElementById('pcbStateLabel').innerText = 'WAITING';
+            } else if (ev === 'exit') {
+                document.getElementById('pstate-terminated').className += ' scale-105 border-rose-500 text-rose-300 font-bold';
+                document.getElementById('pcbStateLabel').innerText = 'TERMINATED';
+            }
+        }
+
+        function setIpcMode(mode) {
+            const sharedBtn = document.getElementById('ipc-btn-shared');
+            const msgBtn = document.getElementById('ipc-btn-message');
+            const view = document.getElementById('ipcDisplayBox');
+
+            if (mode === 'shared') {
+                sharedBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow-md';
+                msgBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700';
+                view.innerHTML = `
+                    <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-cyan-300">
+                        <span class="font-bold block mb-1">[Shared Region: 0x7FFF0000]</span>
+                        Process A writes directly -> Process B reads directly (No kernel sys_call overhead).
+                    </div>
+                `;
+            } else {
+                msgBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow-md';
+                sharedBtn.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700';
+                view.innerHTML = `
+                    <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-indigo-300">
+                        <span class="font-bold block mb-1">[Kernel Message Queue #101]</span>
+                        Process A -> sys_msgsnd() -> Kernel Queue Buffer -> sys_msgrcv() -> Process B.
+                    </div>
+                `;
+            }
+        }
+        setIpcMode('shared');
+
+        function setThreadModel(model) {
+            document.querySelectorAll('#tmodel-manyToOne, #tmodel-oneToOne, #tmodel-manyToMany').forEach(c => {
+                c.className = 'cursor-pointer bg-slate-950 p-4 rounded-xl border-2 border-slate-800 hover:border-violet-500/50 transition space-y-2';
+            });
+            document.getElementById(`tmodel-${model}`).className = 'cursor-pointer bg-slate-950 p-4 rounded-xl border-2 border-indigo-500 bg-indigo-950/20 space-y-2';
+        }
+
+        /* -------------------------------------------------------------------
+           MODULE 2: CPU SCHEDULING SIMULATION ENGINE
+           ------------------------------------------------------------------- */
+        let activeWorkload = [
+            { id: 'P1', at: 0, bt: 6, priority: 2 },
+            { id: 'P2', at: 1, bt: 4, priority: 1 },
+            { id: 'P3', at: 2, bt: 8, priority: 3 },
+            { id: 'P4', at: 3, bt: 3, priority: 2 }
+        ];
+
+        function renderWorkloadTable() {
+            const body = document.getElementById('processWorkloadBody');
+            body.innerHTML = '';
+            activeWorkload.forEach((p, idx) => {
+                body.innerHTML += `
+                    <tr class="hover:bg-slate-900/40">
+                        <td class="p-3 font-bold text-rose-400">${p.id}</td>
+                        <td class="p-3"><input type="number" min="0" value="${p.at}" onchange="updateProcessVal(${idx}, 'at', this.value)" class="w-16 bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
+                        <td class="p-3"><input type="number" min="1" value="${p.bt}" onchange="updateProcessVal(${idx}, 'bt', this.value)" class="w-16 bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
+                        <td class="p-3"><input type="number" min="1" value="${p.priority}" onchange="updateProcessVal(${idx}, 'priority', this.value)" class="w-16 bg-slate-900 border border-slate-700 rounded p-1 text-slate-200"></td>
+                        <td class="p-3 text-right"><button onclick="deleteProcessRow(${idx})" class="text-rose-400 hover:text-rose-300 font-bold">Remove</button></td>
+                    </tr>
+                `;
+            });
+        }
+        renderWorkloadTable();
+
+        function updateProcessVal(idx, key, val) { activeWorkload[idx][key] = parseInt(val) || 0; }
+        function addNewProcessRow() {
+            activeWorkload.push({ id: `P${activeWorkload.length + 1}`, at: 0, bt: 4, priority: 2 });
+            renderWorkloadTable();
+        }
+        function deleteProcessRow(idx) {
+            activeWorkload.splice(idx, 1);
+            renderWorkloadTable();
+        }
+        function resetSchedulerWorkload() {
+            activeWorkload = [
+                { id: 'P1', at: 0, bt: 6, priority: 2 },
+                { id: 'P2', at: 1, bt: 4, priority: 1 },
+                { id: 'P3', at: 2, bt: 8, priority: 3 }
+            ];
+            renderWorkloadTable();
+        }
+
+        function toggleAlgoInputs() {
+            const algo = document.getElementById('algoSelect').value;
+            document.getElementById('quantumInputBox').style.display = (algo === 'rr') ? 'block' : 'none';
+        }
+
+        function loadPresetWorkload(preset) {
+            if (preset === 'convoy') {
+                activeWorkload = [
+                    { id: 'P1', at: 0, bt: 24, priority: 1 },
+                    { id: 'P2', at: 0, bt: 3, priority: 2 },
+                    { id: 'P3', at: 0, bt: 3, priority: 3 }
+                ];
+                document.getElementById('algoSelect').value = 'fcfs';
+            } else if (preset === 'starvation') {
+                activeWorkload = [
+                    { id: 'P1', at: 0, bt: 10, priority: 1 },
+                    { id: 'P2', at: 1, bt: 8, priority: 1 },
+                    { id: 'P3', at: 2, bt: 6, priority: 4 }
+                ];
+                document.getElementById('algoSelect').value = 'priority-np';
+            } else {
+                resetSchedulerWorkload();
+            }
+            toggleAlgoInputs();
+            renderWorkloadTable();
+        }
+
+        /* CPU SCHEDULER ALGORITHM CALCULATION */
+        function startSchedulerSimulation() {
+            const algo = document.getElementById('algoSelect').value;
+            const quantum = parseInt(document.getElementById('timeQuantum').value) || 2;
+            const plist = JSON.parse(JSON.stringify(activeWorkload));
+
+            let timeline = [];
+            let currentTime = 0;
+            let completed = 0;
+            const n = plist.length;
+
+            if (n === 0) return;
+
+            // FCFS
+            if (algo === 'fcfs') {
+                plist.sort((a, b) => a.at - b.at);
+                plist.forEach(p => {
+                    if (currentTime < p.at) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: p.at - currentTime });
+                        currentTime = p.at;
+                    }
+                    timeline.push({ id: p.id, start: currentTime, duration: p.bt });
+                    p.ct = currentTime + p.bt;
+                    currentTime += p.bt;
+                });
+            }
+            // SJF Non-Preemptive
+            else if (algo === 'sjf') {
+                let isDone = Array(n).fill(false);
+                while (completed < n) {
+                    let idx = -1;
+                    let minBt = Infinity;
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !isDone[i] && plist[i].bt < minBt) {
+                            minBt = plist[i].bt;
+                            idx = i;
+                        }
+                    }
+                    if (idx === -1) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: 1 });
+                        currentTime++;
+                    } else {
+                        timeline.push({ id: plist[idx].id, start: currentTime, duration: plist[idx].bt });
+                        currentTime += plist[idx].bt;
+                        plist[idx].ct = currentTime;
+                        isDone[idx] = true;
+                        completed++;
+                    }
+                }
+            }
+            // Round Robin
+            else {
+                let remBt = plist.map(p => p.bt);
+                let readyQueue = [];
+                let visited = Array(n).fill(false);
+
+                while (completed < n) {
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !visited[i]) {
+                            readyQueue.push(i);
+                            visited[i] = true;
+                        }
+                    }
+
+                    if (readyQueue.length === 0) {
+                        timeline.push({ id: 'IDLE', start: currentTime, duration: 1 });
+                        currentTime++;
+                        continue;
+                    }
+
+                    let curr = readyQueue.shift();
+                    let execTime = Math.min(quantum, remBt[curr]);
+                    timeline.push({ id: plist[curr].id, start: currentTime, duration: execTime });
+                    currentTime += execTime;
+                    remBt[curr] -= execTime;
+
+                    for (let i = 0; i < n; i++) {
+                        if (plist[i].at <= currentTime && !visited[i]) {
+                            readyQueue.push(i);
+                            visited[i] = true;
+                        }
+                    }
+
+                    if (remBt[curr] > 0) {
+                        readyQueue.push(curr);
+                    } else {
+                        plist[curr].ct = currentTime;
+                        completed++;
+                    }
+                }
+            }
+
+            // Render Gantt Chart
+            const gantt = document.getElementById('ganttVisualBar');
+            gantt.innerHTML = '';
+            const colors = ['bg-rose-600', 'bg-indigo-600', 'bg-cyan-600', 'bg-emerald-600', 'bg-violet-600'];
+            let totalDuration = 0;
+
+            timeline.forEach((block, idx) => {
+                totalDuration += block.duration;
+                const col = block.id === 'IDLE' ? 'bg-slate-800 text-slate-500' : colors[idx % colors.length];
+                gantt.innerHTML += `
+                    <div class="h-12 ${col} text-white font-mono text-xs font-bold rounded-lg flex flex-col justify-center items-center px-2 border-r border-slate-950 min-w-[44px]" style="flex-grow: ${block.duration}">
+                        <span>${block.id}</span>
+                        <span class="text-[9px] opacity-80">${block.start}-${block.start + block.duration}</span>
+                    </div>
+                `;
+            });
+            document.getElementById('ganttTimeTotal').innerText = `Total: ${totalDuration} units`;
+
+            // Calculate Metrics Table
+            let sumWT = 0, sumTAT = 0;
+            const resTable = document.getElementById('schedResultsBody');
+            resTable.innerHTML = '';
+
+            plist.forEach(p => {
+                p.tat = p.ct - p.at;
+                p.wt = p.tat - p.bt;
+                sumWT += p.wt;
+                sumTAT += p.tat;
+
+                resTable.innerHTML += `
+                    <tr class="hover:bg-slate-900/40">
+                        <td class="p-3 font-bold text-rose-400">${p.id}</td>
+                        <td class="p-3">${p.at}</td>
+                        <td class="p-3">${p.bt}</td>
+                        <td class="p-3">${p.ct}</td>
+                        <td class="p-3 text-indigo-300 font-bold">${p.tat}</td>
+                        <td class="p-3 text-cyan-300 font-bold">${p.wt}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('metric-awt').innerText = `${(sumWT / n).toFixed(2)} units`;
+            document.getElementById('metric-att').innerText = `${(sumTAT / n).toFixed(2)} units`;
+            document.getElementById('metric-util').innerText = `100.0%`;
+            document.getElementById('metric-tput').innerText = `${(n / totalDuration).toFixed(2)} / unit`;
+        }
+
+        function togglePlayPauseSim() { startSchedulerSimulation(); }
+        function stepSimForward() { startSchedulerSimulation(); }
+        function stopSimReset() {
+            document.getElementById('ganttVisualBar').innerHTML = '<div class="text-slate-500 text-xs font-mono text-center w-full">Click "Run Simulation" to generate Gantt chart timeline.</div>';
+        }
+    </script>
+</body>
+</html>
